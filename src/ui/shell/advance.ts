@@ -47,12 +47,17 @@ export function advanceActions(g: GameState): { main: AdvanceAction; extra: Adva
     case 'draft':
       return { main: { label: 'Continue: Summer Development', sub: 'Draft complete', run: () => void st.continueOffseason(), kind: 'primary' }, extra: [] };
     case 'progression':
-      return { main: { label: `Begin ${seasonLabel(g.season + 1)} Season`, sub: 'New schedule, new class', run: () => void st.continueOffseason(), kind: 'gold' }, extra: [] };
+      return { main: { label: 'Continue: Scheduling Office', sub: 'Build next year’s non-conference slate', run: () => void st.continueOffseason(), kind: 'primary' }, extra: [] };
+    case 'scheduling': {
+      const sc = g.scheduling;
+      const used = sc ? sc.games.length + (sc.mte ? 2 : 0) : 12;
+      return { main: { label: `Lock Schedule & Begin ${seasonLabel(g.season + 1)}`, sub: used < 12 ? `${12 - used} open date${12 - used > 1 ? 's' : ''} — staff will fill` : 'All 12 dates booked', run: () => void st.continueOffseason(), kind: 'gold' }, extra: [] };
+    }
   }
   return { main: { label: 'Continue', run: sim('day') }, extra: [] };
 }
 
 export const PHASE_LABEL: Record<GameState['phase'], string> = {
   preseason: 'Preseason', regular: 'Regular Season', confTourney: 'Championship Week', selection: 'Selection Sunday', ncaa: 'March Madness',
-  seasonEnd: 'Season Review', declarations: 'Draft Declarations', portal: 'Transfer Portal', signing: 'Signing Day', draft: 'NBA Draft', progression: 'Summer Development',
+  seasonEnd: 'Season Review', declarations: 'Draft Declarations', portal: 'Transfer Portal', signing: 'Signing Day', draft: 'NBA Draft', progression: 'Summer Development', scheduling: 'Scheduling Office',
 };

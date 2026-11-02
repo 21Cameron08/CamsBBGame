@@ -342,6 +342,7 @@ function OffseasonCard({ g }: { g: GameState }) {
     signing: ['Signing Day', 'Your incoming class is officially on campus.'],
     draft: ['NBA Draft', 'See where your players landed.'],
     progression: ['Summer Development', 'Who made the leap?'],
+    scheduling: ['Scheduling Office', 'Build next season’s non-conference slate.'],
   };
   const [t, d] = labels[g.phase] ?? ['Offseason', ''];
   const user = g.teams[g.user.teamId];

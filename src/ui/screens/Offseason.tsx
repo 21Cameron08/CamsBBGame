@@ -10,6 +10,7 @@ import { seasonLabel } from '../../engine/calendar';
 import { teamPlayers, ROSTER_MAX } from '../../engine/team';
 import type { GameState, Player, PortalOffer } from '../../engine/types';
 import { sfx } from '../sound';
+import { SchedulingOffice } from './Scheduling';
 
 const PHASE_TITLES: Partial<Record<GameState['phase'], [string, string]>> = {
   seasonEnd: ['Season Review', 'Awards, evaluations and the coaching carousel'],
@@ -18,6 +19,7 @@ const PHASE_TITLES: Partial<Record<GameState['phase'], [string, string]>> = {
   signing: ['Signing Day', 'Your incoming class arrives on campus'],
   draft: ['NBA Draft', 'Two rounds. Sixty dreams.'],
   progression: ['Summer Development', 'Who put in the work?'],
+  scheduling: ['Scheduling Office', 'Book next season’s non-conference slate'],
 };
 
 export function OffseasonScreen() {
@@ -40,13 +42,14 @@ export function OffseasonScreen() {
       {g.phase === 'signing' && <Signing />}
       {g.phase === 'draft' && <Draft />}
       {g.phase === 'progression' && <Progression />}
+      {g.phase === 'scheduling' && <SchedulingOffice />}
       {!title && <InSeasonPreview />}
     </div>
   );
 }
 
 const STEPS: [GameState['phase'], string][] = [
-  ['seasonEnd', 'Review'], ['declarations', 'Declare'], ['portal', 'Portal'], ['signing', 'Signing'], ['draft', 'Draft'], ['progression', 'Develop'],
+  ['seasonEnd', 'Review'], ['declarations', 'Declare'], ['portal', 'Portal'], ['signing', 'Signing'], ['draft', 'Draft'], ['progression', 'Develop'], ['scheduling', 'Schedule'],
 ];
 function PhaseSteps({ phase }: { phase: GameState['phase'] }) {
   const idx = STEPS.findIndex(([p]) => p === phase);

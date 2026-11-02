@@ -49,6 +49,19 @@ Production build: `npm run build`, then `npm run preview` (or host the `dist/` f
   - Those who leave become head coaches around the country and join your coaching tree.
 - Expiring contracts come up for renewal each spring. Your Associate HC writes your pregame scouting reports.
 
+### 🗓️ Non-conference scheduling
+- Every offseason, the **Scheduling Office** lets you build next year's 12 non-conference dates. Conference play stays set by the league.
+- **Feast Week events.** Pick a Thanksgiving-week tournament, from elite invite-only fields in Maui and the Bahamas down to small-school events. Or skip it.
+- **Book games** at home, on the road, on a neutral site, or as a **home-and-home** series whose return game is locked in next year.
+- **Opponents answer realistically:**
+  - Contenders won't come to your gym without a return trip.
+  - Smaller schools take **buy games** for a guarantee check.
+  - Bigger programs will **pay you** to visit, and that money goes to your NIL pool.
+- **A live résumé meter** shows strength of schedule, projected Quad 1 and Quad 4 games, expected record and net guarantees, plus a verdict on how the committee will view it.
+- **Rivalry games** are pre-booked, but you can drop one.
+- **Auto-fill** hands the open dates to your staff; a GM schedules smarter.
+- **Your choices have consequences:** marquee home games build fan hype, money flows into your NIL pool, and the media asks about your slate at media day.
+
 ### 🏟️ Real schools, real 2026–27 conferences
 - **365 programs** in **32 conferences**, using the realignment that takes effect July 2026:
   - the rebuilt Pac-12
@@ -152,6 +165,7 @@ src/
     offseason.ts   awards, carousel, declarations, portal, signing day, draft, development
     press.ts / events.ts / media.ts   press conferences, story events, news & social
     staff.ts       coaching staff: market, effects, contracts, poaching, coaching tree
+    scheduling.ts  Scheduling Office: Feast Week events, booking rules, guarantees, series, résumé meter
     world.ts       new-dynasty creation
   store/       Zustand store, IndexedDB saves, mods
   ui/          React UI (screens, overlays, live game, face generator, logos, sound)

@@ -15,6 +15,7 @@ import { mediaDayPresser, seasonEndPresser } from './press';
 import { NBA_TEAMS } from '../data/names';
 import { milesBetween } from '../data/places';
 import { staffEffects, maybePoachStaff, finalizePoaching, staffSeasonEnd, staffNewSeason, staffFollowCoach } from './staff';
+import { openScheduling, lockScheduling, applyScheduleEffects } from './scheduling';
 
 const NCAA_BONUS: Record<string, number> = { Champion: 30, 'Runner-up': 22, 'Final Four': 18, 'Elite Eight': 12, 'Sweet 16': 8, 'Round of 32': 4, 'Round of 64': 1, 'First Four': 0.5 };
 
@@ -275,6 +276,7 @@ export function takeJob(state: GameState, teamId: string) {
   if (offer) { coach.salary = offer.salary; coach.contractYears = offer.years; }
   state.user.teamId = nu.id;
   staffFollowCoach(state, nu.id, old.school);
+  if (state.scheduling) state.scheduling.obligations = []; // old school's series stay with the old school
   state.user.fired = false;
   state.user.offers = [];
   state.user.board = [];
@@ -663,6 +665,7 @@ export function newSeason(state: GameState) {
   // new recruiting class
   for (const r of generateClass(state, state.season + 1)) state.recruits[r.id] = r;
   computeRatings(state);
+  applyScheduleEffects(state);
   seedInterest(state);
   state.user.board = [];
   seedUserBoard(state);
@@ -693,7 +696,8 @@ export function advanceOffseason(state: GameState) {
     case 'portal': portalRound(state); break;
     case 'signing': doDraft(state); break;
     case 'draft': doProgression(state); break;
-    case 'progression': newSeason(state); break;
+    case 'progression': openScheduling(state); break;
+    case 'scheduling': lockScheduling(state); newSeason(state); break;
     default: break;
   }
 }

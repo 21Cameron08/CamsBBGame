@@ -437,7 +437,8 @@ export type Phase =
   | 'portal'
   | 'signing'
   | 'draft'
-  | 'progression';
+  | 'progression'
+  | 'scheduling';
 
 export interface CalendarDay {
   day: number;
@@ -541,6 +542,45 @@ export interface GameState {
   offseason: OffseasonState | null;
   /** user's coaching staff (added in save v2; migrated on load) */
   staff?: StaffState;
+  /** non-conference scheduling (added in save v3) */
+  scheduling?: SchedulingState;
+}
+
+export type GameSite = 'home' | 'away' | 'neutral';
+export interface MteOption {
+  name: string;
+  location: string;
+  /** 1 = elite field .. 4 = small-school field */
+  tier: 1 | 2 | 3 | 4;
+  /** the three other teams in your pod */
+  field: string[];
+  /** program prestige needed for an invite */
+  minPrestige: number;
+}
+export interface PlannedGame {
+  oppId: string;
+  site: GameSite;
+  /** home-and-home: the return game is owed next season */
+  series?: boolean;
+  /** + received / - paid (game guarantee), dollars */
+  guarantee: number;
+  locked?: 'rivalry' | 'return';
+  event?: string;
+}
+export interface ScheduleObligation { oppId: string; site: 'home' | 'away'; season: number; }
+export interface SchedulingState {
+  /** season the plan is for */
+  season: number;
+  mtes: MteOption[];
+  /** chosen event name; null = skip Feast Week; undefined = not chosen */
+  mte?: string | null;
+  games: PlannedGame[];
+  droppedRivals: string[];
+  /** projected ratings / ranks for next season */
+  proj: Record<string, number>;
+  projRank: Record<string, number>;
+  obligations: ScheduleObligation[];
+  locked: boolean;
 }
 
 export type StaffRole = 'assoc' | 'recruiting' | 'defense' | 'development' | 'gm' | 'strength';

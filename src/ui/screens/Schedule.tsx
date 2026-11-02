@@ -38,6 +38,13 @@ export function ScheduleScreen() {
           <div className="stat-tile"><div className="l">PPG / OPP</div><div className="v" style={{ fontSize: 22 }}>{played.length ? (r.pf / played.length).toFixed(1) : '—'} / {played.length ? (r.pa / played.length).toFixed(1) : '—'}</div></div>
         </div>
       </div>
+      {g.phase === 'scheduling' && (
+        <div className="card glow mb row">
+          <span style={{ fontSize: 26 }}>🗓️</span>
+          <div style={{ flex: 1 }}><div className="b">You're building the {seasonLabel(g.season + 1)} non-conference schedule</div><div className="small muted">These are last season's results. Book next year's games in the Scheduling Office.</div></div>
+          <button className="btn primary" onClick={() => useGame.getState().nav('offseason')}>Open Scheduling Office →</button>
+        </div>
+      )}
       {[...months.entries()].map(([m, list]) => (
         <Section key={m} title={m} className="mb">
           <div className="col" style={{ gap: 6 }}>

@@ -4,6 +4,7 @@ import type { BoxScore, Effect, GameState, Player, PressConference, PressQuestio
 import { INSIDERS } from './media';
 import { MEDIA_OUTLETS } from '../data/names';
 import { teamPlayers } from './team';
+import { resumeMetrics } from './scheduling';
 
 type Ctx = {
   team: string; mascot: string; opp?: string; record: string; star?: Player; streak: number; rank: number | null;
@@ -94,6 +95,29 @@ export function mediaDayPresser(state: GameState): PressConference {
       A('deflect', `My expectations are internal. They stay in the locker room.`, [{ kind: 'mediaRep', delta: -1 }, { kind: 'morale', target: 'team', delta: 1 }]),
     ]),
   ];
+  const sc = state.scheduling;
+  if (sc && sc.season === state.season && sc.locked) {
+    const m = resumeMetrics(state);
+    const top = [...sc.games].sort((a, b) => (sc.projRank[a.oppId] ?? 999) - (sc.projRank[b.oppId] ?? 999)).slice(0, 2).map((x) => state.teams[x.oppId].school);
+    if (m.sosLabel === 'Brutal' || m.sosLabel === 'Tough') {
+      qs.push(q(`You loaded up the non-conference schedule — ${top.join(' and ')}${sc.mte ? `, plus the ${sc.mte}` : ''}. Why take on that gauntlet?`, [
+        A('confident', `We want the best. March prep starts in November.`, [{ kind: 'hype', delta: 4 }, { kind: 'morale', target: 'team', delta: 2 }]),
+        A('humble', `It'll test us. We're going to learn a lot about who we are.`, [{ kind: 'mediaRep', delta: 3 }]),
+        A('joke', `Ask me again after I've watched the film from those games.`, [{ kind: 'mediaRep', delta: 2 }, { kind: 'hype', delta: 1 }]),
+      ]));
+    } else if (m.sosLabel === 'Soft' || m.sosLabel === 'Cupcake') {
+      qs.push(q(`Critics are calling your non-conference schedule soft. Your response?`, [
+        A('fiery', `Ask the committee in March. We'll be just fine.`, [{ kind: 'hype', delta: 2 }, { kind: 'security', delta: -1 }]),
+        A('humble', `Fair critique. We're young — building confidence early matters.`, [{ kind: 'mediaRep', delta: 2 }, { kind: 'morale', target: 'team', delta: 2 }]),
+        A('deflect', `You play who's available. Next question.`, [{ kind: 'mediaRep', delta: -2 }]),
+      ]));
+    } else {
+      qs.push(q(`Walk us through your approach to the non-conference schedule this year.`, [
+        A('confident', `Enough big games to get us battle-tested, enough home games to build momentum.`, [{ kind: 'mediaRep', delta: 2 }, { kind: 'hype', delta: 2 }]),
+        A('humble', `Our staff did a great job. It's balanced, and it'll prepare us for league play.`, [{ kind: 'mediaRep', delta: 3 }]),
+      ]));
+    }
+  }
   if (c.star) {
     qs.push(q(`${c.star.first} ${c.star.last} is getting a lot of preseason buzz. What makes him special?`, [
       A('praise', `He's the hardest worker I've ever coached. All-American, no question.`, [{ kind: 'morale', target: c.star.id, delta: 8 }, { kind: 'followers', target: c.star.id, delta: 15000 }]),

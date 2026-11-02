@@ -3,6 +3,7 @@ import type { GameState, ScheduledGame, Team } from './types';
 import { NONCONF_DAYS, FIRST_CONF_DAY, CONF_DAYS, FEAST_WEEK_DAYS } from './calendar';
 import { RIVALRIES } from '../data/rivalries';
 import { TV_NETWORKS } from '../data/names';
+import { reservedTeams } from './scheduling';
 
 const NONCONF_GAMES = 12;
 
@@ -86,10 +87,45 @@ export function generateSchedule(state: GameState): ScheduledGame[] {
     });
   }
 
+  // ---- 1b. The user's planned non-conference slate (built in the Scheduling Office) ----
+  const sc = state.scheduling;
+  const uid = state.user.teamId;
+  const planActive = !!sc && sc.season === state.season && sc.locked;
+  if (planActive && sc) {
+    const ev = sc.mte ? sc.mtes.find((m) => m.name === sc.mte) : undefined;
+    const [d1, d2] = FEAST_WEEK_DAYS;
+    if (ev && ev.field.every((id) => byId[id])) {
+      const [a, b, c] = ev.field;
+      const second = rng.chance(0.5) ? b : c;
+      const third = second === b ? c : b;
+      add(d1, uid, a, 'nc', true, ev.name);
+      add(d1, b, c, 'nc', true, ev.name);
+      add(d2, uid, second, 'nc', true, ev.name);
+      add(d2, a, third, 'nc', true, ev.name);
+    }
+    const order = (x: (typeof sc.games)[number]) => (x.locked === 'rivalry' ? 3 : x.site === 'neutral' || x.series ? 2 : 1);
+    const planned = [...sc.games].filter((x) => byId[x.oppId] && byId[x.oppId].conf !== byId[uid].conf).sort((x, y) => order(x) - order(y));
+    const free: number[] = [];
+    for (let d = 1; d <= NONCONF_DAYS; d++) if (!busy[d].has(uid)) free.push(d);
+    const usedDays = new Set<number>();
+    planned.forEach((x, i) => {
+      const ideal = free[Math.round((i * (free.length - 1)) / Math.max(1, planned.length - 1))];
+      const day = [ideal, ...free].find((d) => d != null && !usedDays.has(d) && !busy[d].has(x.oppId) && !busy[d].has(uid));
+      if (day == null) return;
+      usedDays.add(day);
+      if (x.site === 'home') add(day, uid, x.oppId, 'nc', false, x.event);
+      else if (x.site === 'away') add(day, x.oppId, uid, 'nc', false, x.event);
+      else add(day, uid, x.oppId, 'nc', true, x.event);
+    });
+  }
+  const reserved = reservedTeams(state);
+
   // ---- 2. Rivalry non-conference games ----
   for (const rv of RIVALRIES) {
     const a = byId[rv.a], b = byId[rv.b];
     if (!a || !b || a.conf === b.conf) continue;
+    if (played.has(key(a.id, b.id))) continue;
+    if (planActive && (rv.a === uid || rv.b === uid)) continue;
     const day = rng.int(9, NONCONF_DAYS);
     if (busy[day].has(a.id) || busy[day].has(b.id)) continue;
     const homeFirst = (state.season + (a.id < b.id ? 0 : 1)) % 2 === 0;
@@ -97,7 +133,7 @@ export function generateSchedule(state: GameState): ScheduledGame[] {
   }
 
   // ---- 3. Feast-week MTEs (neutral, 4-team pods among tier 1-2 teams) ----
-  const mtePool = rng.shuffle(teams.filter((t) => confTier(state, t) <= 2 || t.prestige >= 50));
+  const mtePool = rng.shuffle(teams.filter((t) => (confTier(state, t) <= 2 || t.prestige >= 50) && !reserved.has(t.id)));
   let podIdx = 0;
   for (let i = 0; i + 3 < mtePool.length && podIdx < MTE_EVENTS.length * 2; i += 4) {
     const pod = mtePool.slice(i, i + 4);
