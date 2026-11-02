@@ -1,0 +1,6 @@
+{
+  "teams": {
+    "indiana": { "prestige": 92, "arena": "Simon Skjodt Assembly Hall" },
+    "saint-marys": { "prestige": 70, "market": 6 }
+  }
+}
