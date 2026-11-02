@@ -15,6 +15,7 @@ import { randomInjury } from './player';
 import { RIVALRIES } from '../data/rivalries';
 import { beginSeasonEnd } from './offseason';
 import { autoSignUnsigned } from './nil';
+import { staffEffects, resolvePoach, applyStaffRenewChoice } from './staff';
 
 export function isUserGame(state: GameState, g: ScheduledGame) {
   return g.home === state.user.teamId || g.away === state.user.teamId;
@@ -72,6 +73,7 @@ export function applyGameResult(state: GameState, g: ScheduledGame, box: BoxScor
 
   // player stats, morale, injuries
   let potg: { id: string; s: number } | null = null;
+  const userInjuryMul = state.staff ? staffEffects(state).injury : 1;
   box.players.forEach((side, i) => {
     const team = i === 0 ? home : away;
     const won = i === 0 ? homeWon : !homeWon;
@@ -97,7 +99,7 @@ export function applyGameResult(state: GameState, g: ScheduledGame, box: BoxScor
         if (!potg || gs > potg.s) potg = { id: bp.id, s: gs };
       }
       // injuries
-      const risk = (bp.min / 40) * 0.0055 * (p.traits.includes('injuryProne') ? 2.5 : 1);
+      const risk = (bp.min / 40) * 0.0055 * (p.traits.includes('injuryProne') ? 2.5 : 1) * (team.id === state.user.teamId ? userInjuryMul : 1);
       if (!p.injury && rng.chance(risk)) {
         p.injury = randomInjury();
         injuryNews(state, p, team.id);
@@ -244,7 +246,9 @@ export function weeklyTick(state: GameState, week: number) {
   if (state.phase === 'regular' || state.phase === 'preseason') maybeWeeklyEvent(state);
   if (rng.chance(0.7)) randomBuzz(state);
   // morale drift and follower growth
+  const staffMorale = state.staff ? staffEffects(state).morale : 0;
   for (const p of Object.values(state.players)) {
+    if (staffMorale && p.teamId === state.user.teamId) p.morale = clamp(p.morale + staffMorale, 0, 100);
     if (!p.teamId) continue;
     p.morale = clamp(p.morale + (65 - p.morale) * 0.04, 0, 100);
     if (p.teamId === state.user.teamId && !p.nil && p.ovr >= 55) p.morale = clamp(p.morale - 2, 0, 100);
@@ -288,6 +292,8 @@ export function resolveInbox(state: GameState, id: string, choiceIdx: number): s
   item.chosen = choiceIdx;
   applyEffects(state, ch.effects, item.personId);
   if (ch.autoNil) autoSignUnsigned(state);
+  if (ch.staffPoach) resolvePoach(state, ch.staffPoach.staffId, ch.staffPoach.teamId, ch.staffPoach.keep);
+  if (ch.staffRenew != null) applyStaffRenewChoice(state, ch.staffRenew);
   if (ch.redshirt) {
     const p = state.players[ch.redshirt];
     if (p) p.redshirting = true;

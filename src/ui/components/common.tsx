@@ -332,3 +332,8 @@ export function fmtMoneyShort(v: number) {
   if (a >= 1_000) return `${s}$${Math.round(a / 1_000)}K`;
   return `${s}$${Math.round(a)}`;
 }
+
+/** Staff members share the coach face generator (same id => same face if they become a head coach) */
+export function StaffFace({ m, size = 48, team, bg = 'circle' }: { m: { id: string; age: number }; size?: number; team?: Pick<Team, 'colors'>; bg?: 'circle' | 'none' | 'card' }) {
+  return <CoachFace c={{ id: m.id, age: m.age }} size={size} team={team} bg={bg} />;
+}

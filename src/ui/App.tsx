@@ -21,6 +21,7 @@ import { InboxScreen } from './screens/Inbox';
 import { OffseasonScreen } from './screens/Offseason';
 import { SettingsScreen } from './screens/Settings';
 import { HistoryScreen } from './screens/History';
+import { StaffScreen } from './screens/Staff';
 import { ModalHost } from './overlays/ModalHost';
 import { LiveGame } from './overlays/LiveGame';
 import { PressConferenceView } from './overlays/PressConference';
@@ -30,6 +31,7 @@ import { Toasts, BusyOverlay } from './shell/Feedback';
 const SCREENS: Record<Screen, React.FC> = {
   home: Dashboard,
   roster: RosterScreen,
+  staff: StaffScreen,
   schedule: ScheduleScreen,
   recruiting: RecruitingScreen,
   portal: OffseasonScreen,

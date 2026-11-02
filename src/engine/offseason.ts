@@ -14,6 +14,7 @@ import { generateClass, seedInterest, seedUserBoard, teamAppeal } from './recrui
 import { mediaDayPresser, seasonEndPresser } from './press';
 import { NBA_TEAMS } from '../data/names';
 import { milesBetween } from '../data/places';
+import { staffEffects, maybePoachStaff, finalizePoaching, staffSeasonEnd, staffNewSeason, staffFollowCoach } from './staff';
 
 const NCAA_BONUS: Record<string, number> = { Champion: 30, 'Runner-up': 22, 'Final Four': 18, 'Elite Eight': 12, 'Sweet 16': 8, 'Round of 32': 4, 'Round of 64': 1, 'First Four': 0.5 };
 
@@ -153,6 +154,7 @@ export function beginSeasonEnd(state: GameState) {
     addNews(state, { kind: 'coach', headline: `${user.school} parts ways with ${coach.first} ${coach.last}`, body: `After ${seasonsAtSchool} season${seasonsAtSchool > 1 ? 's' : ''}, ${user.school} has fired head coach ${coach.first} ${coach.last}. The search begins immediately.`, teams: [user.id], important: true, personId: coach.id, personKind: 'coach' });
   }
   state.offseason = { graduating: [], declared: [], progression: {}, signed: [], carousel, summary, achieved, securityDelta: secDelta };
+  staffSeasonEnd(state);
   state.user.press = fired ? null : seasonEndPresser(state, summary);
   for (const a of awards.filter((x) => x.name === 'National Player of the Year' || x.name === 'Coach of the Year' || x.name.startsWith('All-American First'))) {
     const t = state.teams[a.teamId];
@@ -197,6 +199,7 @@ function runCarousel(state: GameState): string[] {
   vacancies.sort((a, b) => b.prestige - a.prestige);
   for (const t of vacancies) {
     if (t.id === state.user.teamId) continue;
+    maybePoachStaff(state, t.id);
     const candidates = Object.values(state.coaches).filter((c) => c.teamId && !c.isUser && state.teams[c.teamId].prestige < t.prestige - 8 && c.reputation >= t.prestige * 0.75);
     let hire: Coach | undefined;
     if (candidates.length && rng.chance(0.7)) {
@@ -271,6 +274,7 @@ export function takeJob(state: GameState, teamId: string) {
   coach.jobSecurity = 70;
   if (offer) { coach.salary = offer.salary; coach.contractYears = offer.years; }
   state.user.teamId = nu.id;
+  staffFollowCoach(state, nu.id, old.school);
   state.user.fired = false;
   state.user.offers = [];
   state.user.board = [];
@@ -281,6 +285,7 @@ export function takeJob(state: GameState, teamId: string) {
 
 // ---------------- Declarations ----------------
 export function doDeclarations(state: GameState) {
+  finalizePoaching(state);
   state.phase = 'declarations';
   const os = state.offseason!;
   const players = Object.values(state.players).filter((p) => p.teamId);
@@ -349,7 +354,7 @@ export function openPortal(state: GameState) {
     pr = clamp(pr, 0, 0.85);
     if (team.id === state.user.teamId) {
       if (pr >= 0.2) {
-        const ask = roundMoney(Math.max(playerValue(state, p) * rng.range(1.0, 1.35), (p.nil?.amount ?? 0) * 1.15));
+        const ask = roundMoney(Math.max(playerValue(state, p) * rng.range(1.0, 1.35), (p.nil?.amount ?? 0) * 1.15) * staffEffects(state).retentionMul);
         state.user.retention[p.id] = { ask, resolved: false };
         (state.user.retention[p.id] as { ask: number; resolved: boolean; prob?: number }).prob = pr;
       }
@@ -442,7 +447,7 @@ function portalScore(state: GameState, p: Player, o: PortalOffer, ask: number): 
   const merc = p.traits.includes('mercenary') ? 1.6 : 1;
   let s = nil * 0.4 * merc + pt * 0.25 + team.prestige * 0.25 + (coach ? coach.skills.portal * 2 : 5) + clamp(30 - miles / 60, 0, 30) * 0.2;
   s += team.rating * 0.4;
-  if (o.teamId === state.user.teamId) s += (state.coaches[state.user.coachId]?.skills.portal ?? 0) * 1.2;
+  if (o.teamId === state.user.teamId) s += (state.coaches[state.user.coachId]?.skills.portal ?? 0) * 1.2 + staffEffects(state).portal;
   return s + rng.normal(0, 4);
 }
 
@@ -599,7 +604,7 @@ export function doProgression(state: GameState) {
   const os = state.offseason!;
   for (const t of Object.values(state.teams)) {
     const coach = state.coaches[t.coachId];
-    const dev = coach ? coach.skills.development : 4;
+    const dev = (coach ? coach.skills.development : 4) + (t.id === state.user.teamId ? staffEffects(state).dev : 0);
     for (const p of teamPlayers(state, t.id)) {
       const share = p.stats.gp ? p.stats.min / Math.max(1, p.stats.gp) / 30 : 0.2;
       const isNewcomer = p.career.length === 0 && p.cls === 'FR' && p.stats.gp === 0;
@@ -634,7 +639,7 @@ export function newSeason(state: GameState) {
     t.coachChange = false;
     const conf = state.conferences.find((c) => c.id === t.conf);
     const coach = state.coaches[t.coachId];
-    t.nilBudget = Math.round(nilBudgetFor(t, conf, t.hype) * (1 + (coach?.skills.nil ?? 3) * 0.03));
+    t.nilBudget = Math.round(nilBudgetFor(t, conf, t.hype) * (1 + (coach?.skills.nil ?? 3) * 0.03) * (t.id === state.user.teamId ? staffEffects(state).nilMul : 1));
     t.hype = clamp(t.hype * 0.7 + 15, 5, 100);
     for (const p of teamPlayers(state, t.id)) {
       p.stats = emptyStats();
@@ -652,6 +657,8 @@ export function newSeason(state: GameState) {
     refreshPower(state, t);
   }
   state.offseason = null;
+  finalizePoaching(state);
+  staffNewSeason(state);
   state.schedule = generateSchedule(state);
   // new recruiting class
   for (const r of generateClass(state, state.season + 1)) state.recruits[r.id] = r;

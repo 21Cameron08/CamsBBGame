@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGame, useGameState } from '../../store/gameStore';
-import { CoachFace, Gauge, TeamLogo, TeamHeroBg, Section, Empty, AnimatedNumber, fmtMoneyShort } from '../components/common';
+import { CoachFace, Gauge, TeamLogo, TeamHeroBg, Section, Empty, AnimatedNumber, fmtMoneyShort, TeamName } from '../components/common';
+import { ROLE_INFO, staffGrade } from '../../engine/staff';
 import { ARCHETYPE_INFO, SKILL_INFO, xpForLevel, EXPECTATIONS } from '../../engine/coach';
 import type { CoachSkills, Trophy } from '../../engine/types';
 import { seasonLabel } from '../../engine/calendar';
@@ -155,6 +156,29 @@ export function CoachScreen() {
             <div className="divider" />
             <div className="tiny muted">Meet or beat the goal to raise job security. Miss it badly for two seasons and the AD will make a change.</div>
           </Section>
+
+          {g.staff && (
+            <Section title="Coaching Tree" right={<button className="btn sm ghost" onClick={() => useGame.getState().nav('staff')}>Staff ({staffGrade(g.staff)}) →</button>}>
+              {g.staff.tree.length === 0 ? (
+                <div className="small muted">None of your assistants have become head coaches yet. Develop ambitious staff and they'll branch out.</div>
+              ) : (
+                <div className="col" style={{ gap: 8 }}>
+                  {g.staff.tree.map((e) => {
+                    const c = g.coaches[e.coachId];
+                    return (
+                      <div key={e.staffId} className="row">
+                        {c ? <CoachFace c={c} size={36} team={c.teamId ? g.teams[c.teamId] : undefined} /> : null}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="small b">{e.name}</div>
+                          <div className="tiny muted">Former {ROLE_INFO[e.role].short} · {c?.teamId ? <TeamName team={g.teams[c.teamId]} /> : 'out of coaching'}{c ? ` · ${c.careerW}-${c.careerL}` : ''}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Section>
+          )}
 
           <Section title="Trophy Case">
             {coach.trophies.length === 0 ? (

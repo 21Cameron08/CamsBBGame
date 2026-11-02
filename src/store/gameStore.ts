@@ -10,9 +10,10 @@ import { RNG, rng, setRng, clamp } from '../engine/rng';
 import { listSaves, readSave, writeSave, deleteSave as delSave, allTeamMods, type SaveMeta, validateSave, getPrefs, setPrefs, type Prefs } from './persistence';
 import { initLogos } from '../ui/logos';
 import { setSoundEnabled } from '../ui/sound';
+import { migrateStaff } from '../engine/staff';
 
 export type Screen =
-  | 'home' | 'roster' | 'schedule' | 'recruiting' | 'portal' | 'nil' | 'rankings' | 'standings' | 'bracket'
+  | 'home' | 'roster' | 'staff' | 'schedule' | 'recruiting' | 'portal' | 'nil' | 'rankings' | 'standings' | 'bracket'
   | 'media' | 'stats' | 'coach' | 'inbox' | 'offseason' | 'settings' | 'history';
 
 export type Modal =
@@ -110,7 +111,13 @@ export const useGame = create<Store>((set, get) => ({
     const r = new RNG(1);
     r.state = g.rngState || Date.now();
     setRng(r);
+    const migrated = migrateStaff(g);
+    if (migrated) g.version = Math.max(g.version, 2);
     set({ game: g, tick: get().tick + 1, screen: 'home', busy: null, modal: null, live: null });
+    if (migrated) {
+      get().toast('New: your Coaching Staff has arrived — check the Staff page.', 'good');
+      void get().save();
+    }
   },
 
   async save() {
@@ -247,6 +254,12 @@ export const useGame = create<Store>((set, get) => ({
     if (!g) return;
     if (g.phase === 'seasonEnd' && g.user.fired && g.user.offers.length) {
       get().toast('You were fired — accept a job offer to continue.', 'bad');
+      return;
+    }
+    const poach = g.phase === 'seasonEnd' && g.inbox.find((i) => !i.resolved && i.choices.some((c) => c.staffPoach));
+    if (poach) {
+      set({ screen: 'inbox', screenArg: poach.id });
+      get().toast(`${poach.from} needs an answer about the ${poach.subject.split(' wants')[0]} job before you move on.`, 'bad');
       return;
     }
     set({ busy: { label: 'Processing offseason…', progress: 0.5 } });

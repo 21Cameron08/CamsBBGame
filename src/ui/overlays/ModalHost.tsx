@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGame, useGameState } from '../../store/gameStore';
-import { ModalFrame, PlayerFace, CoachFace, TeamLogo, TeamName, Ovr, Stars, RatingRow, Tabs, Bar, TeamHeroBg, fmtMoneyShort, Section } from '../components/common';
+import { ModalFrame, PlayerFace, CoachFace, TeamLogo, TeamName, Ovr, Stars, RatingRow, Tabs, Bar, TeamHeroBg, fmtMoneyShort, Section, StaffFace } from '../components/common';
 import type { BoxPlayer, BoxScore, GameState, Player, Recruit, RatingKey } from '../../engine/types';
 import { RATING_LABELS } from '../../engine/types';
 import { fmtHeight, TRAIT_INFO } from '../../engine/player';
@@ -517,7 +517,10 @@ function PregameModal({ gameId }: { gameId: string }) {
         <div className="tiny muted" style={{ textAlign: 'center', marginTop: 12 }}>{game.neutral ? 'Neutral site' : g.teams[game.home].arena} · Line: {userLine === 0 ? 'Pick’em' : `${user.abbr} ${userLine > 0 ? '-' : '+'}${Math.abs(userLine)}`} · Win prob {Math.round(wp * 100)}%</div>
       </div>
       <div style={{ padding: '6px 30px 28px' }} className="grid g2">
-        <Section title="Scouting Report">
+        <Section title="Scouting Report" right={(() => {
+          const a = g.staff?.members.find((m) => m.role === 'assoc');
+          return a ? <span className="row tiny muted" style={{ gap: 6 }}><StaffFace m={a} size={26} team={user} bg="none" />Prepared by {a.first} {a.last}</span> : <span className="tiny muted">Prepared by your video coordinator</span>;
+        })()}>
           <div className="col" style={{ gap: 8 }}>
             {keys.map((k, i) => <motion.div key={i} className="small" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 + i * 0.1 }}>🔑 {k}</motion.div>)}
           </div>

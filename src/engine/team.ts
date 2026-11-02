@@ -3,6 +3,7 @@ import type { GameState, Player, Strategy, Team, TeamRecord, OffStyle, DefStyle,
 import { teamOvr } from './player';
 import type { SimTeamSetup } from './sim';
 import type { ConferenceDef } from '../data/types';
+import { staffEffects } from './staff';
 
 export const ROSTER_MAX = 15;
 export const ROSTER_MIN = 12;
@@ -82,7 +83,7 @@ export function assignNumbers(state: GameState, team: Team) {
 export function simSetup(state: GameState, team: Team): SimTeamSetup {
   const coach = state.coaches[team.coachId];
   const players = teamPlayers(state, team.id).filter((p) => !p.injury && !p.redshirting);
-  return {
+  const base = {
     id: team.id,
     abbr: team.abbr,
     name: team.school,
@@ -91,6 +92,9 @@ export function simSetup(state: GameState, team: Team): SimTeamSetup {
     coachTactics: coach ? coach.skills.tactics : 5,
     coachMotivation: coach ? coach.skills.motivation : 5,
   };
+  if (team.id !== state.user.teamId || !state.staff) return base;
+  const e = staffEffects(state);
+  return { ...base, coachTactics: base.coachTactics + e.tactics, coachMotivation: base.coachMotivation + e.motivation, defBonus: e.defense, pressure: e.pressure, staminaMul: e.stamina };
 }
 
 export function winPct(r: TeamRecord): number {

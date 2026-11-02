@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useGame, useGameState } from '../../store/gameStore';
-import { TeamLogo, TeamName, PlayerFace, Ovr, Gauge, Section, Bar, Stars, fmtMoneyShort, PersonFace, CoachFace, AnimatedNumber, TeamHeroBg } from '../components/common';
+import { TeamLogo, TeamName, PlayerFace, Ovr, Gauge, Section, Bar, Stars, fmtMoneyShort, PersonFace, CoachFace, AnimatedNumber, TeamHeroBg, StaffFace } from '../components/common';
+import { STAFF_ROLES, ROLE_INFO, staffGrade } from '../../engine/staff';
 import { userGameToday, nextUserGame, playerPerGame, isRivalry } from '../../engine/season';
 import { spread, confStandings } from '../../engine/rankings';
 import { normCdf } from '../../engine/sim';
@@ -117,6 +118,27 @@ export function Dashboard() {
                 <span className="pill bad">Open</span>
               </div>
             </motion.div>
+          )}
+
+          {g.staff && (
+            <Section title="Coaching Staff" right={<button className="btn sm ghost" onClick={() => nav('staff')}>Staff →</button>}>
+              <div className="row" style={{ justifyContent: 'space-between', gap: 6 }}>
+                {STAFF_ROLES.map((r) => {
+                  const m = g.staff!.members.find((x) => x.role === r);
+                  return (
+                    <div key={r} style={{ textAlign: 'center', cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => nav('staff')} title={m ? `${m.first} ${m.last} · ${ROLE_INFO[r].title} (${m.rating})` : `${ROLE_INFO[r].title} — vacant`}>
+                      {m ? <StaffFace m={m} size={44} team={user} /> : <div style={{ width: 44, height: 44, borderRadius: 22, border: '2px dashed var(--bad)', display: 'grid', placeItems: 'center', margin: '0 auto', fontSize: 18 }}>{ROLE_INFO[r].icon}</div>}
+                      <div className="tiny muted ellipsis" style={{ marginTop: 3 }}>{ROLE_INFO[r].short}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="row tiny muted" style={{ marginTop: 10 }}>
+                <span>Staff grade <b style={{ color: 'var(--text)' }}>{staffGrade(g.staff)}</b></span>
+                <div className="spacer" />
+                {g.staff.members.length < 6 ? <span className="bad b">{6 - g.staff.members.length} vacant role{6 - g.staff.members.length > 1 ? 's' : ''}</span> : <span className="good">Fully staffed</span>}
+              </div>
+            </Section>
           )}
 
           <Section title="NIL & Rev-Share" right={<button className="btn sm ghost" onClick={() => nav('nil')}>NIL office →</button>}>

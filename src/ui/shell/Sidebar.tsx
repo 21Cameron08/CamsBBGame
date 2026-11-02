@@ -5,6 +5,7 @@ const ITEMS: { id: Screen; icon: string; label: string; section?: string }[] = [
   { id: 'home', icon: '🏠', label: 'Dashboard', section: 'Program' },
   { id: 'inbox', icon: '📨', label: 'Office' },
   { id: 'roster', icon: '👥', label: 'Roster & Lineup' },
+  { id: 'staff', icon: '📋', label: 'Coaching Staff' },
   { id: 'schedule', icon: '📅', label: 'Schedule' },
   { id: 'recruiting', icon: '🎯', label: 'Recruiting', section: 'Build' },
   { id: 'offseason', icon: '🔁', label: 'Portal & Offseason' },
@@ -27,6 +28,7 @@ export function Sidebar() {
   const team = g.teams[g.user.teamId];
   const coach = g.coaches[g.user.coachId];
   const unread = g.inbox.filter((i) => !i.resolved).length;
+  const staffOpen = g.staff ? 6 - g.staff.members.length : 0;
   const offseason = !['preseason', 'regular', 'confTourney', 'selection', 'ncaa'].includes(g.phase);
   return (
     <aside className="sidebar">
@@ -42,6 +44,7 @@ export function Sidebar() {
               <span className="nav-icon">{it.icon}</span>
               <span className="label">{it.label}</span>
               {it.id === 'inbox' && unread > 0 && <span className="nav-badge">{unread}</span>}
+              {it.id === 'staff' && staffOpen > 0 && <span className="nav-badge" title="Vacant staff roles">{staffOpen}</span>}
               {it.id === 'offseason' && offseason && <span className="nav-badge soft pulse">LIVE</span>}
               {it.id === 'skills' as Screen && coach.skillPoints > 0 && <span className="nav-badge">{coach.skillPoints}</span>}
               {it.id === 'coach' && coach.skillPoints > 0 && <span className="nav-badge" style={{ background: 'var(--gold)', color: '#111' }}>{coach.skillPoints}</span>}

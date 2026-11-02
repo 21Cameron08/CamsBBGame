@@ -4,6 +4,7 @@ import type { GameState, Recruit, RecruitPriorities, RecruitSchool, Team, Pos, R
 import { ARCHETYPES_BY_POS, buildRatings, calcOvr, genFollowers, genName, genTraits, pickPlace, nilValue, randomPos, roundMoney } from './player';
 import { milesBetween } from '../data/places';
 import { teamPlayers, ROSTER_MAX, confTierOf } from './team';
+import { staffEffects } from './staff';
 
 export const RECRUIT_ACTIONS = {
   text: { label: 'Text', hours: 1, pts: 2.5, desc: 'Quick check-in. Small relationship boost.' },
@@ -187,7 +188,7 @@ export function teamAppeal(state: GameState, r: Recruit, team: Team, nilOffer = 
     pt,
     prestige: clamp(team.prestige + tierBoost, 0, 100),
     proximity: clamp(100 - miles / 12, 0, 100),
-    coach: clamp((coach?.reputation ?? 50) * 0.8 + (coach ? coach.skills.recruiting * 2 : 10), 0, 100),
+    coach: clamp((coach?.reputation ?? 50) * 0.8 + (coach ? coach.skills.recruiting * 2 : 10) + (team.id === state.user.teamId && state.staff && staffPipelineState(state) === r.state ? 12 : 0), 0, 100),
     pro: clamp(team.prestige * 0.6 + (coach ? coach.skills.development * 4 : 20) + (team.facilities ?? 5) * 2, 0, 100),
     academics: clamp(team.academics * 10, 0, 100),
     winning: clamp(50 + team.rating * 2.2 + (team.record.w - team.record.l) * 1.5, 0, 100),
@@ -198,6 +199,12 @@ export function teamAppeal(state: GameState, r: Recruit, team: Team, nilOffer = 
   const levelGap = r.stars * 18 - team.prestige;
   if (levelGap > 20) total -= (levelGap - 20) * 0.5;
   return { total: clamp(total, 0, 100), parts };
+}
+
+let pipeCache: { s: GameState; v: string | null } | null = null;
+function staffPipelineState(state: GameState): string | null {
+  if (!pipeCache || pipeCache.s !== state || !depthCache) pipeCache = { s: state, v: staffEffects(state).pipeline };
+  return pipeCache.v;
 }
 
 export function schoolEntry(r: Recruit, teamId: string): RecruitSchool | undefined {
@@ -373,7 +380,8 @@ export function userRecruitAction(state: GameState, recruitId: string, action: R
   if (state.user.hours < def.hours) return { ok: false, msg: `Not enough recruiting hours (${def.hours}h needed).` };
   const s = ensureSchool(r, state.user.teamId);
   const coach = state.coaches[state.user.coachId];
-  const skillMul = 1 + (coach?.skills.recruiting ?? 0) * 0.06;
+  const se = staffEffects(state);
+  const skillMul = (1 + (coach?.skills.recruiting ?? 0) * 0.06) * se.relMul * (se.pipeline && r.state === se.pipeline ? se.pipelineBonus : 1);
   const coachPri = 0.7 + r.priorities.coach * 3;
   if (action === 'scout') {
     if (r.scouted >= 100) return { ok: false, msg: 'Already fully scouted.' };

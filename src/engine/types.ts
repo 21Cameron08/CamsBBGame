@@ -339,6 +339,12 @@ export interface SocialPost {
 
 export interface InboxChoice {
   label: string;
+  /** staff poaching decision marker */
+  staffPoach?: { staffId: string; teamId: string; keep: boolean };
+  /** staff contract decision marker */
+  staffRenew?: boolean;
+  /** UI: jump to a screen after choosing */
+  goto?: string;
   /** short preview of effects shown in UI */
   hint?: string;
   effects: Effect[];
@@ -357,7 +363,8 @@ export type Effect =
   | { kind: 'injury'; target: string; games: number }
   | { kind: 'rating'; target: string; key: RatingKey; delta: number }
   | { kind: 'recruitInterest'; delta: number }
-  | { kind: 'hours'; delta: number };
+  | { kind: 'hours'; delta: number }
+  | { kind: 'staff'; staffId: string; salaryPct?: number; loyalty?: number; ambition?: number };
 
 export interface InboxItem {
   id: string;
@@ -532,6 +539,55 @@ export interface GameState {
   /** free-form log for debugging/history */
   log: string[];
   offseason: OffseasonState | null;
+  /** user's coaching staff (added in save v2; migrated on load) */
+  staff?: StaffState;
+}
+
+export type StaffRole = 'assoc' | 'recruiting' | 'defense' | 'development' | 'gm' | 'strength';
+export type StaffTrait =
+  | 'Recruiting Ace' | 'X&O Wizard' | 'Players’ Favorite' | 'Grinder' | 'Former Pro'
+  | 'Rising Star' | 'Old School' | 'Analytics Guru' | 'Connector' | 'Loyal Soldier';
+
+export interface StaffMember {
+  id: string;
+  first: string;
+  last: string;
+  age: number;
+  role: StaffRole;
+  /** 1-100 quality in this role */
+  rating: number;
+  trait: StaffTrait;
+  /** state code where he has deep recruiting ties (null = none) */
+  pipeline: string | null;
+  salary: number;
+  years: number;
+  loyalty: number; // 0-100, resists being poached
+  ambition: number; // 0-100, wants a head job
+  seasons: number; // seasons on your staff
+  history: string[];
+  /** user chose to let him walk when contract expires */
+  release?: boolean;
+  /** asking salary when on the market */
+  ask?: number;
+}
+
+export interface CoachingTreeEntry {
+  staffId: string;
+  name: string;
+  role: StaffRole;
+  teamId: string;
+  season: number;
+  /** AI coach id he became (same as staffId) */
+  coachId: string;
+}
+
+export interface StaffState {
+  members: StaffMember[];
+  market: StaffMember[];
+  budget: number;
+  /** one-season dead money from firings */
+  buyouts: number;
+  tree: CoachingTreeEntry[];
 }
 
 export interface OffseasonState {

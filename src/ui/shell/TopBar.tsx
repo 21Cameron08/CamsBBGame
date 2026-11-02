@@ -48,7 +48,7 @@ export function TopBar() {
         )}
         <AnimatePresence>
           {menu && (
-            <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} className="card" style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', zIndex: 40, padding: 6, minWidth: 220 }}>
+            <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} className="card solid" style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', zIndex: 40, padding: 6, minWidth: 220, boxShadow: 'var(--shadow)' }}>
               {extra.map((e) => (
                 <button key={e.label} className="btn ghost block" style={{ justifyContent: 'flex-start' }} onClick={() => { setMenu(false); e.run(); }}>{e.label}</button>
               ))}

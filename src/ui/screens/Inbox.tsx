@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGame, useGameState } from '../../store/gameStore';
-import { PlayerFace, PersonFace, Empty, TeamLogo } from '../components/common';
+import { PlayerFace, PersonFace, Empty, TeamLogo, StaffFace, CoachFace } from '../components/common';
 import { resolveInbox } from '../../engine/season';
 import { effectSummary } from '../../engine/coach';
 import type { InboxItem } from '../../engine/types';
@@ -30,6 +30,8 @@ export function InboxScreen() {
     mutate((gg) => { msg = resolveInbox(gg, item.id, idx); });
     sfx.click();
     setResult({ id: item.id, text: msg, fx: effectSummary(item.choices[idx].effects) });
+    const goto = item.choices[idx].goto;
+    if (goto) setTimeout(() => useGame.getState().nav(goto as Parameters<ReturnType<typeof useGame.getState>['nav']>[0]), 700);
   };
 
   return (
@@ -141,6 +143,12 @@ function Portrait({ item, size }: { item: InboxItem; size: number }) {
   if (item.personKind === 'player' && item.personId && g.players[item.personId]) {
     const p = g.players[item.personId];
     return <PlayerFace p={p} size={size} team={p.teamId ? g.teams[p.teamId] : team} />;
+  }
+  if (item.personKind === 'staff' && item.personId) {
+    const m = g.staff?.members.find((x) => x.id === item.personId);
+    if (m) return <StaffFace m={m} size={size} team={team} />;
+    const c = g.coaches[item.personId];
+    if (c) return <CoachFace c={c} size={size} team={c.teamId ? g.teams[c.teamId] : team} />;
   }
   return <PersonFace seed={item.from} size={size} role="staff" colors={team.colors} />;
 }

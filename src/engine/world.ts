@@ -15,9 +15,10 @@ import { computeRatings, runPoll } from './rankings';
 import { addNews, addSocial } from './media';
 import { introPresser } from './press';
 import { welcomeInbox } from './events';
+import { initStaff, staffWelcomeInbox } from './staff';
 
 export const START_SEASON = 2026;
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export interface NewGameOptions {
   seed?: number;
@@ -149,6 +150,7 @@ export function createWorld(opts: NewGameOptions): GameState {
   seedUserBoard(state);
   const ranks = runPoll(state, 'Preseason AP Poll');
   setExpectations(state);
+  initStaff(state, { vacantGM: true });
   state.user.hoursMax = hoursForWeek(state);
   state.user.hours = state.user.hoursMax;
 
@@ -160,6 +162,7 @@ export function createWorld(opts: NewGameOptions): GameState {
   addNews(state, { kind: 'rank', headline: `Preseason AP Poll: ${state.teams[ranks[0]].school} opens at No. 1`, body: `Top five: ${ranks.slice(0, 5).map((id, i) => `${i + 1}. ${state.teams[id].school}`).join(', ')}.`, teams: ranks.slice(0, 5) });
   addSocial(state, { handle: `${uteam.abbr}Nation`, name: `${uteam.school} Nation`, verified: false, kind: 'fan', text: `Welcome to ${uteam.school}, Coach ${ucoach.last}! Let's get it 🙌🏀`, teamId: uteam.id });
   addSocial(state, { handle: 'MarcusBellHoops', name: 'Marcus Bell', verified: true, kind: 'insider', text: `Sources: ${uteam.school} is finalizing a ${ucoach.contractYears}-year deal with ${ucoach.first} ${ucoach.last}. Intriguing hire.`, teamId: uteam.id });
+  staffWelcomeInbox(state);
   welcomeInbox(state);
   state.user.press = introPresser(state);
   state.rngState = rng.state;

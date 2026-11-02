@@ -12,6 +12,12 @@ export interface SimTeamSetup {
   strategy: Strategy;
   coachTactics: number; // 0..10
   coachMotivation: number; // 0..10
+  /** staff: opponent shot-make reduction when this team defends */
+  defBonus?: number;
+  /** staff: extra turnover pressure when this team defends */
+  pressure?: number;
+  /** staff: energy drain multiplier */
+  staminaMul?: number;
 }
 
 export interface SimOptions {
@@ -283,7 +289,7 @@ export class GameSim {
     const before = this.t;
     this.t += dur;
     for (const team of [0, 1] as const) {
-      const tempoDrain = 1 + (this.strategy[team].tempo - 3) * 0.08 + (this.strategy[team].defense === 'press' ? 0.15 : 0);
+      const tempoDrain = (1 + (this.strategy[team].tempo - 3) * 0.08 + (this.strategy[team].defense === 'press' ? 0.15 : 0)) * (this.setups[team].staminaMul ?? 1);
       for (const x of this.sp[team]) {
         if (x.on) {
           x.secs += dur;
@@ -405,6 +411,7 @@ export class GameSim {
     if (transition) p += 0.02;
     if (!this.neutral) p += o === 0 ? -0.006 : 0.006;
     p -= this.setups[o].coachTactics * 0.0015;
+    p += this.setups[d].pressure ?? 0;
     p = clamp(p, 0.07, 0.32);
     if (!rng.chance(p)) return false;
     const culprit = pickW(on, (x) => x.usage * (1.35 - x.r.hdl / 100));
@@ -536,7 +543,7 @@ export class GameSim {
       if (ctx.transition) p += 0.03;
     }
     p += (r.iq - 65) * 0.0006;
-    p += this.setups[o].coachTactics * 0.0018 - this.setups[d].coachTactics * 0.0012;
+    p += this.setups[o].coachTactics * 0.0018 - this.setups[d].coachTactics * 0.0012 - (this.setups[d].defBonus ?? 0);
     p -= Math.max(0, 72 - shooter.energy) * 0.0022;
     if (!this.neutral) p += (o === 0 ? 1 : -1) * (0.008 + this.crowd * 0.008);
     if (this.runPts[o] >= 7) p += 0.012; // momentum

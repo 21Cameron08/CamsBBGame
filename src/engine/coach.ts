@@ -2,6 +2,7 @@ import { rng, clamp } from './rng';
 import type { Coach, CoachArchetype, CoachSkills, Effect, GameState, Team } from './types';
 import { FIRST_NAMES, LAST_NAMES } from '../data/names';
 import { teamPlayers } from './team';
+import { staffEffects } from './staff';
 
 export const ARCHETYPE_INFO: Record<CoachArchetype, { desc: string; skills: Partial<CoachSkills>; icon: string }> = {
   Recruiter: { desc: 'Lives on the road. More recruiting hours and stronger pitches.', skills: { recruiting: 4, nil: 1 }, icon: '📞' },
@@ -91,7 +92,7 @@ export function gainXp(state: GameState, amount: number): number {
 
 export function hoursForWeek(state: GameState): number {
   const c = state.coaches[state.user.coachId];
-  return 40 + (c ? c.skills.recruiting * 4 : 0);
+  return 40 + (c ? c.skills.recruiting * 4 : 0) + staffEffects(state).hours;
 }
 
 export function applyEffects(state: GameState, effects: Effect[], ctxPlayer?: string) {
@@ -135,6 +136,14 @@ export function applyEffects(state: GameState, effects: Effect[], ctxPlayer?: st
         break;
       }
       case 'hours': state.user.hours = Math.max(0, state.user.hours + e.delta); break;
+      case 'staff': {
+        const m = state.staff?.members.find((x) => x.id === e.staffId);
+        if (!m) break;
+        if (e.salaryPct) m.salary = Math.round((m.salary * (1 + e.salaryPct)) / 1000) * 1000;
+        if (e.loyalty) m.loyalty = clamp(m.loyalty + e.loyalty, 0, 99);
+        if (e.ambition) m.ambition = clamp(m.ambition + e.ambition, 0, 99);
+        break;
+      }
     }
   }
 }
@@ -155,6 +164,7 @@ export function effectSummary(effects: Effect[]): string {
       case 'hours': parts.push(`Recruiting hours ${sign(e.delta)}${e.delta}`); break;
       case 'followers': parts.push(`Followers ${sign(e.delta)}${Math.round(e.delta / 1000)}K`); break;
       case 'injury': parts.push(`Injury risk`); break;
+      case 'staff': parts.push([e.salaryPct ? `Staff salary +${Math.round(e.salaryPct * 100)}%` : '', e.loyalty ? `Loyalty ${sign(e.loyalty)}${e.loyalty}` : '', e.ambition ? `Ambition ${sign(e.ambition)}${e.ambition}` : ''].filter(Boolean).join(', ')); break;
       case 'rating': parts.push(`Rating ${sign(e.delta)}${e.delta}`); break;
     }
   }

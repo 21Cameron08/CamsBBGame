@@ -125,15 +125,21 @@ const GENERATORS: { w: number; phase: ('regular' | 'preseason' | 'confTourney' |
     },
   },
   {
-    w: 2, phase: ['regular'], gen: (s) => {
-      const name = `${rng.pick(FIRST_NAMES)} ${rng.pick(LAST_NAMES)}`;
-      const school = rng.pick(Object.values(s.teams).filter((t) => t.prestige < s.teams[s.user.teamId].prestige)).school;
+    w: 3, phase: ['regular'], gen: (s) => {
+      // A program is quietly courting one of your assistants
+      const staff = (s.staff?.members ?? []).filter((m) => m.role !== 'strength' && m.ambition >= 40 && m.rating >= 55);
+      if (!staff.length) return null;
+      const m = rng.pick(staff);
+      const school = rng.pick(Object.values(s.teams).filter((t) => t.id !== s.user.teamId && t.prestige < s.teams[s.user.teamId].prestige + 10)).school;
+      const role = ({ assoc: 'Associate Head Coach', recruiting: 'Recruiting Coordinator', defense: 'Defensive Coordinator', development: 'Player Development Coach', gm: 'General Manager', strength: 'Strength Coach' } as const)[m.role];
       return mk(s, {
-        from: name, fromRole: 'Associate Head Coach', subject: 'I have a head coaching offer',
-        body: `Your top assistant, ${name}, has been offered the head job at ${school}. He's been your best recruiter. A raise from your staff pool might keep him.`,
+        from: `${m.first} ${m.last}`, fromRole: role, subject: `${school} has been calling me`,
+        body: `Coach, heads up — ${school}'s AD reached out about a bigger role. I haven't said yes to anything. I just want to know where I stand with you.`,
+        personId: m.id, personKind: 'staff',
         choices: [
-          { label: 'Match with a raise', hint: 'Costs NIL/staff money, keep recruiting edge', effects: [{ kind: 'nilBudget', delta: -120000 }, { kind: 'hours', delta: 4 }, { kind: 'recruitInterest', delta: 2 }], result: `He stays. Loyalty pays.` },
-          { label: 'Congratulate him', hint: 'Lose recruiting hours this week', effects: [{ kind: 'hours', delta: -10 }, { kind: 'rep', delta: 2 }], result: `Your coaching tree grows. Your recruiting board feels it.` },
+          { label: 'Give him a 10% raise', hint: 'Uses staff pool; big loyalty boost', effects: [{ kind: 'staff', staffId: m.id, salaryPct: 0.1, loyalty: 18, ambition: -6 }], result: `${m.first} is all-in. "I'm not going anywhere, Coach."` },
+          { label: 'Tell him he’s the future here', hint: 'Free; small loyalty boost, ambition grows', effects: [{ kind: 'staff', staffId: m.id, loyalty: 6, ambition: 6 }], result: `He appreciated it. You'll want to keep an eye on this one.` },
+          { label: '"Do what’s best for your family"', hint: 'Loyalty drops — likely gone this spring', effects: [{ kind: 'staff', staffId: m.id, loyalty: -14, ambition: 12 }, { kind: 'mediaRep', delta: 1 }], result: `He nodded. The writing may be on the wall.` },
         ],
       });
     },

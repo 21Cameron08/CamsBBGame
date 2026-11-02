@@ -29,6 +29,26 @@ Production build: `npm run build`, then `npm run preview` (or host the `dist/` f
   - Get fired and you'll have to pick up the pieces at another school.
 - A **coaching carousel** runs every spring. AI coaches get fired, retire, or get poached by bigger jobs, and you get job offers too.
 
+### 📋 Coaching staff
+- **Six roles**: Associate Head Coach, Recruiting Coordinator, Defensive Coordinator, Player Development, General Manager and Strength & Conditioning.
+- Each staffer has a rating, a trait (X&O Wizard, Recruiting Ace, Rising Star and more), loyalty, ambition and a contract.
+- Their effects feed straight into the game:
+  - game-day tactics and defense
+  - recruiting hours and **pipeline states**
+  - offseason development
+  - the NIL pool, portal pitches and retention costs
+  - fatigue and injuries
+- **Hiring market**:
+  - Offer the asking salary, +15% or +25%.
+  - Candidates show how interested they are in your program.
+  - Hires come out of a staff pool sized to your school.
+  - Firing costs a buyout.
+- **Poaching and your coaching tree**:
+  - Strong, ambitious assistants get offered head coaching jobs.
+  - Counter-offer to keep them, or give your blessing.
+  - Those who leave become head coaches around the country and join your coaching tree.
+- Expiring contracts come up for renewal each spring. Your Associate HC writes your pregame scouting reports.
+
 ### 🏟️ Real schools, real 2026–27 conferences
 - **365 programs** in **32 conferences**, using the realignment that takes effect July 2026:
   - the rebuilt Pac-12
@@ -131,6 +151,7 @@ src/
     nil.ts         NIL budgets, valuations, deals
     offseason.ts   awards, carousel, declarations, portal, signing day, draft, development
     press.ts / events.ts / media.ts   press conferences, story events, news & social
+    staff.ts       coaching staff: market, effects, contracts, poaching, coaching tree
     world.ts       new-dynasty creation
   store/       Zustand store, IndexedDB saves, mods
   ui/          React UI (screens, overlays, live game, face generator, logos, sound)
