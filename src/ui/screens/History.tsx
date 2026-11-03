@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { openRecords } from './Records';
 import { motion } from 'framer-motion';
 import { useGame, useGameState } from '../../store/gameStore';
 import { TeamLogo, TeamName, Section, Empty, CoachFace, TeamHeroBg } from '../components/common';
@@ -88,6 +89,7 @@ export function HistoryScreen() {
               <div className="eyebrow" style={{ color: 'rgba(255,255,255,.8)' }}>Program History</div>
               <div className="h1" style={{ fontSize: 44 }}>{team.school} {team.mascot}</div>
               <div className="small" style={{ opacity: 0.85 }}>{team.arena} · {conf?.name} · Prestige {Math.round(team.prestige)}</div>
+              <button className="btn sm" style={{ marginTop: 10 }} onClick={() => openRecords('program')}>📖 Program Record Book</button>
             </div>
             <div className="spacer" />
             <div className="grid g3" style={{ gap: 10, minWidth: 380 }}>

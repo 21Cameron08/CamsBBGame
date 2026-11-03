@@ -15,6 +15,7 @@ import { computeRatings, runPoll } from './rankings';
 import { addNews, addSocial } from './media';
 import { introPresser } from './press';
 import { ensureDevelopment } from './development';
+import { recordBook } from './records';
 import { welcomeInbox } from './events';
 import { initStaff, staffWelcomeInbox } from './staff';
 
@@ -166,6 +167,7 @@ export function createWorld(opts: NewGameOptions): GameState {
   staffWelcomeInbox(state);
   welcomeInbox(state);
   ensureDevelopment(state);
+  recordBook(state);
   state.user.press = introPresser(state);
   state.rngState = rng.state;
   return state;

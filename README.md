@@ -198,6 +198,20 @@ Production build: `npm run build`, then `npm run preview` (or host the `dist/` f
   - your Selection Sunday press conference follows the show
 - **Awards**: National POY, All-American teams, Freshman of the Year, DPOY, Coach of the Year, conference POYs, Final Four MOP.
 - **Program history**: championship banners, a season-by-season table, a trophy case, award winners and draft picks.
+- **Record Book** with **League Records** and **Program Records**, kept from the first season of your dynasty:
+  - **Single Game:**
+    - player records: points, rebounds, assists, steals, blocks, threes
+    - team records: points, margin of victory, threes
+    - each entry shows the opponent and the full stat line
+  - **Single Season:**
+    - player records: points and PPG, rebounds and RPG, assists and APG, steals, blocks, threes, FG%
+    - team records: wins, win %, points per game, fewest points allowed
+  - **All-Time:**
+    - career leaders: points, rebounds, assists, steals, blocks, threes, games, PPG
+    - program totals: titles, Final Fours, Sweet 16s, NCAA appearances, conference titles, wins
+  - Top-10 lists for the league and every program you've coached, plus the record holder for every other program.
+  - When a record falls you get a headline. If it's one of your players, the press asks you about it.
+  - Open it from the sidebar, or from **Program History → Program Record Book**.
 - **Atmosphere**:
   - the whole UI re-themes to your school's colors
   - synthesized sound effects (swish, rim, buzzer, crowd)
@@ -236,6 +250,7 @@ src/
     nil.ts         NIL budgets, valuations, deals
     offseason.ts   awards, carousel, declarations, signing day, draft
     development.ts player development: plans, spotlight, weekly practice, goals, summer workouts
+    records.ts     league and program record books: single game, single season, career, team
     portal.ts      transfer portal: retention, entry waves, odds, bidding wars, calls, decisions, grades
     press.ts       press conferences: question pools, reporters, media memory and follow-ups
     events.ts / media.ts   story events, news & social

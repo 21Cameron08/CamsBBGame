@@ -15,6 +15,7 @@ const ITEMS: { id: Screen; icon: string; label: string; section?: string }[] = [
   { id: 'standings', icon: '🏆', label: 'Standings' },
   { id: 'bracket', icon: '🗂️', label: 'Brackets' },
   { id: 'stats', icon: '📈', label: 'Stat Leaders' },
+  { id: 'records', icon: '📖', label: 'Record Book' },
   { id: 'media', icon: '📰', label: 'Media & Social' },
   { id: 'coach', icon: '🧢', label: 'Coach Career', section: 'You' },
   { id: 'history', icon: '📜', label: 'Program History' },

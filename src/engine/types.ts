@@ -686,6 +686,8 @@ export interface GameState {
   offseason: OffseasonState | null;
   /** user's coaching staff (added in save v2; migrated on load) */
   staff?: StaffState;
+  /** league and program record books (created on first use) */
+  records?: RecordBook;
   /** player development: plans, practice, goals (created on first use) */
   development?: DevelopmentState;
   /** non-conference scheduling (added in save v3) */
@@ -837,4 +839,49 @@ export interface DevelopmentState {
   goalsSeason: number;
   /** the most recent summer of development */
   summer?: { season: number; done: boolean; rows: DevReportRow[] };
+}
+
+// ---------------- Record book ----------------
+/** One record-book line (kept compact: record books are saved for every program) */
+export interface RecEntry {
+  /** value */
+  v: number;
+  /** player name or school */
+  n: string;
+  /** team id (league lists only) */
+  t?: string;
+  /** season */
+  s: number;
+  /** opponent team id (single game) */
+  o?: string;
+  /** player id */
+  p?: string;
+  /** extra detail, e.g. a stat line */
+  x?: string;
+}
+export type RecScope = 'game' | 'season' | 'career' | 'teamGame' | 'teamSeason';
+export type RecordSet = Record<RecScope, Record<string, RecEntry[]>>;
+export interface RecordBreak {
+  scope: RecScope;
+  cat: string;
+  level: 'league' | 'program';
+  teamId: string;
+  v: number;
+  prev?: number;
+  prevName?: string;
+  n: string;
+  p?: string;
+  season: number;
+  day: number;
+  gameId?: string;
+}
+export interface RecordBook {
+  /** first season tracked */
+  since: number;
+  league: RecordSet;
+  programs: Record<string, RecordSet>;
+  /** programs that keep full top-10 lists (ones you've coached) */
+  tracked: string[];
+  /** recent record-breaking moments (for news and the press) */
+  recent: RecordBreak[];
 }

@@ -17,8 +17,8 @@ const TONE: Record<PressQuestion['answers'][number]['tone'], { icon: string; lab
   joke: { icon: '😄', label: 'Lighten up' },
 };
 
-const TAG_ICON: Record<string, string> = { 'Follow-up': '🔁', 'Last season': '📅', 'Big picture': '🔭', Offseason: '🔄', Storyline: '📖', Rematch: '⚔️', 'Senior Night': '🎓', Milestone: '🏅', Award: '🏆', 'Your past': '🧳' };
-const TAG_CLS: Record<string, string> = { 'Follow-up': 'gold', 'Last season': 'blue', Rematch: 'bad', Milestone: 'good', Award: 'good', 'Senior Night': 'accent' };
+const TAG_ICON: Record<string, string> = { Record: '📖', 'Follow-up': '🔁', 'Last season': '📅', 'Big picture': '🔭', Offseason: '🔄', Storyline: '📖', Rematch: '⚔️', 'Senior Night': '🎓', Milestone: '🏅', Award: '🏆', 'Your past': '🧳' };
+const TAG_CLS: Record<string, string> = { Record: 'gold', 'Follow-up': 'gold', 'Last season': 'blue', Rematch: 'bad', Milestone: 'good', Award: 'good', 'Senior Night': 'accent' };
 
 export function PressConferenceView() {
   const press = useGame((s) => s.game?.user.press ?? null);

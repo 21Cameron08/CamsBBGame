@@ -12,6 +12,7 @@ import { maybeWeeklyEvent } from './events';
 import { gainXp, hoursForWeek, applyEffects } from './coach';
 import { postgamePresser, recordClaim, selectionPresser } from './press';
 import { weeklyPractice, practiceMods } from './development';
+import { recordGame } from './records';
 import { randomInjury } from './player';
 import { RIVALRIES } from '../data/rivalries';
 import { beginSeasonEnd } from './offseason';
@@ -119,6 +120,7 @@ export function applyGameResult(state: GameState, g: ScheduledGame, box: BoxScor
     }
   });
   if (potg) g.potg = (potg as { id: string }).id;
+  recordGame(state, g, box);
 
   // store box scores for notable games
   const notable = isUser || (preApH && preApA) || g.type === 'ncaa';

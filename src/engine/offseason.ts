@@ -18,6 +18,7 @@ import { staffEffects, maybePoachStaff, finalizePoaching, staffSeasonEnd, staffN
 import { openScheduling, lockScheduling, applyScheduleEffects } from './scheduling';
 import { openPortal, advancePortalDay } from './portal';
 import { beginSummer, summerDone, runSummer, evaluateGoals, devNewSeason } from './development';
+import { recordSeasonEnd, trackProgram } from './records';
 
 const NCAA_BONUS: Record<string, number> = { Champion: 30, 'Runner-up': 22, 'Final Four': 18, 'Elite Eight': 12, 'Sweet 16': 8, 'Round of 32': 4, 'Round of 64': 1, 'First Four': 0.5 };
 
@@ -117,6 +118,7 @@ export function beginSeasonEnd(state: GameState) {
     if (!p.teamId || p.stats.gp === 0) continue;
     p.career.push({ ...p.stats, season: state.season, teamId: p.teamId, cls: p.cls, ovr: p.ovr });
   }
+  recordSeasonEnd(state);
 
   // user evaluation
   const uh = user.history[user.history.length - 1];
@@ -288,6 +290,7 @@ export function takeJob(state: GameState, teamId: string) {
   for (const r of Object.values(state.recruits)) r.userPromise = null;
   addNews(state, { kind: 'coach', headline: `${nu.school} hires ${coach.first} ${coach.last}`, body: `${coach.first} ${coach.last} leaves ${old.school} to take over at ${nu.school}.`, teams: [nu.id, old.id], important: true, personId: coach.id, personKind: 'coach' });
   state.user.moments.push({ kind: 'title', label: `New Job: ${nu.school}`, teamId: nu.id });
+  trackProgram(state, nu.id);
   state.user.press = introPresser(state, { fromTeamId: old.id, fired: wasFired });
 }
 

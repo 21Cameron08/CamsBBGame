@@ -402,3 +402,16 @@ input[type='range'] { accent-color: var(--accent); width: 100%; }
   .ss-ones, .ss-region-grid, .ss-ff { grid-template-columns: 1fr 1fr; }
   .ss-region-grid { grid-template-columns: 1fr; }
 }
+
+/* record book */
+.rec-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.rec-card { padding: 14px 16px; }
+.rec-row { display: flex; align-items: center; gap: 10px; padding: 5px 6px; border-radius: 8px; }
+.rec-row:hover { background: rgba(255, 255, 255, 0.04); }
+.rec-row.top { background: linear-gradient(90deg, rgba(246, 201, 76, 0.12), transparent 70%); }
+.rec-row.top .rec-val { color: var(--gold); }
+.rec-row.me { box-shadow: inset 3px 0 0 var(--accent); }
+.rec-rank { width: 18px; text-align: right; font-size: 11px; color: var(--dim); font-weight: 800; }
+.rec-val { width: 52px; font-size: 18px; text-align: right; flex: none; }
+.rec-link { cursor: pointer; }
+.rec-link:hover { text-decoration: underline; }

@@ -13,6 +13,7 @@ import { draftScore, fmtMoney } from './player';
 import { seasonLabel } from './calendar';
 import { classRankings } from './recruiting';
 import { FOCUS_INFO } from './development';
+import { recordsInGame, GAME_CATS, TEAM_GAME_CATS, fmtRec } from './records';
 
 type Tone = PressQuestion['answers'][number]['tone'];
 type Answer = PressQuestion['answers'][number];
@@ -1126,6 +1127,23 @@ export function postgamePresser(state: GameState, g: ScheduledGame, box: BoxScor
       A('praise', `They're the reason this program is where it is. I'll miss them more than they know.`, [{ kind: 'morale', target: 'team', delta: 5 }, { kind: 'hype', delta: 3 }]),
       A('humble', `It's emotional. Coaches aren't supposed to cry at the podium, but I came close.`, [{ kind: 'mediaRep', delta: 4 }, { kind: 'hype', delta: 2 }]),
     ]) });
+  }
+  const broke = recordsInGame(state, g.id).filter((r) => r.teamId === team.id)[0];
+  if (broke) {
+    const cat = (broke.scope === 'teamGame' ? TEAM_GAME_CATS : GAME_CATS).find((x) => x.id === broke.cat);
+    const bp = broke.p ? state.players[broke.p] : undefined;
+    if (cat) {
+      cands.push({ key: 'pg.record', topic: 'record', w: 14, build: () => makeQ(team, { role: 'tv', tag: 'Record' }, bp
+        ? `${nm(bp)} just set a new ${broke.level === 'league' ? 'league' : 'program'} single-game record with ${fmtRec(cat, broke.v)} ${cat.label.toLowerCase()}${broke.prevName ? `, passing ${broke.prevName}` : ''}. Did you know he was close?`
+        : `That's a new ${broke.level === 'league' ? 'league' : 'program'} record: ${fmtRec(cat, broke.v)} ${cat.label.toLowerCase()} in a game. What does that say about this team?`, bp ? [
+        A('praise', `Somebody told me with about two minutes left. That's history, and he earned every bit of it.`, [{ kind: 'morale', target: bp.id, delta: 8 }, { kind: 'followers', target: bp.id, delta: 20000 }, { kind: 'hype', delta: 3 }]),
+        A('humble', `His teammates kept finding him. That record belongs to everybody in that locker room.`, [{ kind: 'morale', target: 'team', delta: 3 }, { kind: 'mediaRep', delta: 2 }]),
+        A('joke', `I told him to keep shooting. Clearly I'm a genius.`, [{ kind: 'mediaRep', delta: 3 }, { kind: 'hype', delta: 2 }]),
+      ] : [
+        A('confident', `When we're clicking, we can do things nobody else in the country can do.`, [{ kind: 'hype', delta: 5 }]),
+        A('humble', `Nights like this don't happen often. We'll enjoy it and get back to work.`, [{ kind: 'mediaRep', delta: 3 }]),
+      ]) });
+    }
   }
   if (won && state.coaches[state.user.coachId].careerW % 50 === 0 && state.coaches[state.user.coachId].careerW > 0) {
     const w = state.coaches[state.user.coachId].careerW;
