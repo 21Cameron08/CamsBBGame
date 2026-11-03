@@ -309,3 +309,7 @@ input[type='range'] { accent-color: var(--accent); width: 100%; }
 .rec-verdict.good { background: rgba(34, 211, 143, 0.1); color: #b6f5da; }
 .rec-verdict.bad { background: rgba(255, 255, 255, 0.04); color: var(--muted); }
 .rec-preview { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 11px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); margin-top: 10px; }
+
+/* press conference: the coach's own words, read back */
+.press-quote { margin: 0 0 12px; padding: 10px 14px; border-left: 3px solid var(--gold); border-radius: 8px; background: rgba(246, 201, 76, 0.08); color: #ffe7a6; font-size: 14px; font-style: italic; line-height: 1.4; }
+.press-quote .upper { font-style: normal; }

@@ -17,6 +17,9 @@ const TONE: Record<PressQuestion['answers'][number]['tone'], { icon: string; lab
   joke: { icon: '😄', label: 'Lighten up' },
 };
 
+const TAG_ICON: Record<string, string> = { 'Follow-up': '🔁', 'Last season': '📅', 'Big picture': '🔭', Offseason: '🔄', Storyline: '📖', Rematch: '⚔️', 'Senior Night': '🎓', Milestone: '🏅', Award: '🏆', 'Your past': '🧳' };
+const TAG_CLS: Record<string, string> = { 'Follow-up': 'gold', 'Last season': 'blue', Rematch: 'bad', Milestone: 'good', Award: 'good', 'Senior Night': 'accent' };
+
 export function PressConferenceView() {
   const press = useGame((s) => s.game?.user.press ?? null);
   const g = useGame((s) => s.game);
@@ -107,8 +110,18 @@ export function PressConferenceView() {
               <div className="row" style={{ marginBottom: 12 }}>
                 <PersonFace seed={q.reporter} size={52} />
                 <div><div className="b">{q.reporter}</div><div className="tiny muted">{q.outlet}</div></div>
-                <div className="spacer" /><span className="pill">🎙️ Reporter</span>
+                <div className="spacer" />
+                <div className="col" style={{ alignItems: 'flex-end', gap: 4 }}>
+                  <span className="pill">🎙️ {q.role ?? 'Reporter'}</span>
+                  {q.tag && <span className={`pill ${TAG_CLS[q.tag] ?? 'blue'}`}>{TAG_ICON[q.tag] ?? '📰'} {q.tag}</span>}
+                </div>
               </div>
+              {q.quote && (
+                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="press-quote">
+                  <div className="tiny upper b" style={{ letterSpacing: '.12em', opacity: 0.75 }}>📼 You, {q.quote.when.charAt(0).toLowerCase() + q.quote.when.slice(1)}</div>
+                  <div style={{ marginTop: 4 }}>“{q.quote.text}”</div>
+                </motion.div>
+              )}
               <div style={{ fontSize: 19, lineHeight: 1.45, minHeight: 84, fontWeight: 600 }}>“{typed}<span className="pulse">{typed.length < q.text.length ? '▍' : ''}</span>{typed.length >= q.text.length ? '”' : ''}</div>
             </motion.div>
           </>

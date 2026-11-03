@@ -11,7 +11,7 @@ import { allocateAiNil, playerValue, nilSatisfaction } from './nil';
 import { buildCalendar, seasonLabel } from './calendar';
 import { generateSchedule } from './schedule';
 import { generateClass, seedInterest, seedUserBoard, signingDayDecisions, teamAppeal } from './recruiting';
-import { mediaDayPresser, seasonEndPresser } from './press';
+import { introPresser, mediaDayPresser, seasonEndPresser, pressSeasonEnd, pressOffseasonRecap } from './press';
 import { NBA_TEAMS } from '../data/names';
 import { milesBetween } from '../data/places';
 import { staffEffects, maybePoachStaff, finalizePoaching, staffSeasonEnd, staffNewSeason, staffFollowCoach } from './staff';
@@ -157,6 +157,7 @@ export function beginSeasonEnd(state: GameState) {
   }
   state.offseason = { graduating: [], declared: [], progression: {}, signed: [], carousel, summary, achieved, securityDelta: secDelta };
   staffSeasonEnd(state);
+  pressSeasonEnd(state, achieved);
   state.user.press = fired ? null : seasonEndPresser(state, summary);
   for (const a of awards.filter((x) => x.name === 'National Player of the Year' || x.name === 'Coach of the Year' || x.name.startsWith('All-American First'))) {
     const t = state.teams[a.teamId];
@@ -260,6 +261,7 @@ function jobOffers(state: GameState, fired: boolean) {
 export function takeJob(state: GameState, teamId: string) {
   const coach = state.coaches[state.user.coachId];
   const old = state.teams[state.user.teamId];
+  const wasFired = state.user.fired;
   const nu = state.teams[teamId];
   const offer = state.user.offers.find((o) => o.teamId === teamId);
   // old team gets new AI coach
@@ -284,6 +286,7 @@ export function takeJob(state: GameState, teamId: string) {
   for (const r of Object.values(state.recruits)) r.userPromise = null;
   addNews(state, { kind: 'coach', headline: `${nu.school} hires ${coach.first} ${coach.last}`, body: `${coach.first} ${coach.last} leaves ${old.school} to take over at ${nu.school}.`, teams: [nu.id, old.id], important: true, personId: coach.id, personKind: 'coach' });
   state.user.moments.push({ kind: 'title', label: `New Job: ${nu.school}`, teamId: nu.id });
+  state.user.press = introPresser(state, { fromTeamId: old.id, fired: wasFired });
 }
 
 // ---------------- Declarations ----------------
@@ -428,6 +431,7 @@ export function doProgression(state: GameState) {
 
 // ---------------- New season ----------------
 export function newSeason(state: GameState) {
+  pressOffseasonRecap(state);
   state.season++;
   state.day = 0;
   state.phase = 'preseason';

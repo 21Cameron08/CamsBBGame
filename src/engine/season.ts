@@ -10,7 +10,7 @@ import { addNews, addSocial, commitNews, gameRecapNews, injuryNews, pollNews, ra
 import { aiRecruitingWeek, decideRecruits, refreshRecruitInterest } from './recruiting';
 import { maybeWeeklyEvent } from './events';
 import { gainXp, hoursForWeek, applyEffects } from './coach';
-import { postgamePresser } from './press';
+import { postgamePresser, recordClaim, selectionPresser } from './press';
 import { randomInjury } from './player';
 import { RIVALRIES } from '../data/rivalries';
 import { beginSeasonEnd } from './offseason';
@@ -280,6 +280,8 @@ export function nextDay(state: GameState) {
     const field = buildNcaa(state);
     const user = field.find((e) => e.teamId === state.user.teamId);
     const ones = field.filter((e) => e.seed === 1).map((e) => state.teams[e.teamId].school);
+    const sp = selectionPresser(state, field);
+    if (sp) state.user.press = sp;
     addNews(state, { kind: 'bracket', headline: `The field of 68 is set — ${ones.join(', ')} earn No. 1 seeds`, body: `Selection Sunday delivered drama as the committee revealed the bracket. ${user ? `${state.teams[state.user.teamId].school} is in as a No. ${user.seed} seed in the ${['East', 'West', 'South', 'Midwest'][user.region]} Region.` : `${state.teams[state.user.teamId].school} was left out of the field.`}`, teams: field.slice(0, 4).map((e) => e.teamId), important: true });
   }
   if (week > prevWeek) weeklyTick(state, week);
@@ -307,7 +309,7 @@ export function answerPress(state: GameState, qIdx: number, aIdx: number) {
   const pc = state.user.press;
   if (!pc) return;
   const a = pc.questions[qIdx]?.answers[aIdx];
-  if (a) applyEffects(state, a.effects);
+  if (a) { applyEffects(state, a.effects); recordClaim(state, pc, a); }
 }
 
 export function refreshAllPower(state: GameState) {

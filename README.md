@@ -121,7 +121,23 @@ Production build: `npm run build`, then `npm run preview` (or host the `dist/` f
 
 ### 📺 Immersion
 - **Press conferences**:
-  - an introductory presser, media day, postgame after big wins and bad losses, and end of season
+  - an introductory presser (including when you change jobs), media day, postgame after big wins and bad losses, **Selection Sunday**, and end of season
+  - **Over 100 question templates** that react to the moment, with several phrasings each. Questions you've heard recently are held back, so pressers don't repeat.
+  - **Longer-term questions**:
+    - last season's finish and who knocked you out of March
+    - who left for the draft or the portal, and who arrived
+    - your record over your whole tenure
+    - tournament droughts
+    - contract talk and the hot seat
+    - job rumors when other schools come calling
+  - **Game-specific questions**:
+    - comebacks and blown leads
+    - hot and cold shooting, turnovers, free throws, the bench
+    - rematches, and revenge games against last year's NCAA opponent
+    - the conference race and bubble talk
+    - senior night, career milestones, a transfer facing his old team
+  - **The media remembers what you said.** Bold claims like "Clear your calendars for April", "We're winning the league" or "He's an All-American" get read back to you later, quote and all, when you deliver or fall short.
+  - **A cast of reporters**: your program's own beat writer, local TV, national insiders, a columnist, an analytics writer, student radio and the visiting team's beat writer, each with their own kind of question
   - reporters with faces, a typewriter effect on each question, camera flashes
   - your answers move morale, hype, job security, media relations, recruiting and even NIL money
 - **Story events** in your Office:
@@ -178,7 +194,8 @@ src/
     nil.ts         NIL budgets, valuations, deals
     offseason.ts   awards, carousel, declarations, signing day, draft, development
     portal.ts      transfer portal: retention, entry waves, odds, bidding wars, calls, decisions, grades
-    press.ts / events.ts / media.ts   press conferences, story events, news & social
+    press.ts       press conferences: question pools, reporters, media memory and follow-ups
+    events.ts / media.ts   story events, news & social
     staff.ts       coaching staff: market, effects, contracts, poaching, coaching tree
     scheduling.ts  Scheduling Office: Feast Week events, booking rules, guarantees, series, résumé meter
     world.ts       new-dynasty creation

@@ -407,13 +407,60 @@ export interface PressQuestion {
   reporter: string;
   outlet: string;
   text: string;
-  answers: { tone: 'confident' | 'humble' | 'deflect' | 'fiery' | 'praise' | 'joke'; text: string; effects: Effect[] }[];
+  answers: { tone: 'confident' | 'humble' | 'deflect' | 'fiery' | 'praise' | 'joke'; text: string; effects: Effect[]; claim?: { kind: PressClaimKind; subject?: string } }[];
+  /** reporter's beat, e.g. 'Beat writer', 'National insider' */
+  role?: string;
+  /** story label, e.g. 'Follow-up', 'Last season' */
+  tag?: string;
+  /** something the coach said earlier, read back to him */
+  quote?: { text: string; when: string };
+  /** template id (for variety tracking) */
+  key?: string;
 }
 export interface PressConference {
   id: string;
   title: string;
   context: string;
   questions: PressQuestion[];
+  /** how the media will refer back to this presser, e.g. 'at Media Day' */
+  when?: string;
+}
+
+/** Bold things the coach said on the record, which the media can bring back up */
+export type PressClaimKind = 'deepRun' | 'tourney' | 'beatExpect' | 'rankedHigher' | 'confTitle' | 'neverAgain' | 'peaking' | 'portalSplash' | 'retention' | 'allAmerican' | 'notLeaving' | 'freshStar';
+export interface PressClaim {
+  kind: PressClaimKind;
+  /** the season the claim is about (offseason claims are about the next one) */
+  season: number;
+  /** the season it was said in */
+  said?: number;
+  day: number;
+  teamId: string;
+  text: string;
+  when: string;
+  subject?: string;
+  /** already brought back up */
+  followed?: boolean;
+}
+/** What the media remembers between press conferences */
+export interface PressMemory {
+  /** recently asked question templates */
+  asked: { key: string; season: number; day: number }[];
+  claims: PressClaim[];
+  /** last season, as the media will bring it up next fall */
+  recap?: {
+    season: number;
+    teamId: string;
+    expectation?: string;
+    expectationLevel?: number;
+    achieved?: number;
+    elim?: { oppId: string; round: string };
+    drafted?: string[];
+    transfersOut?: string[];
+    transfersIn?: { name: string; from: string; id: string }[];
+    signees?: string[];
+    portalGrade?: string;
+  };
 }
 
 export interface BracketGame {
@@ -561,6 +608,8 @@ export interface UserState {
   retention: Record<string, RetentionMeeting>;
   scoutedTeams: string[];
   achievements: string[];
+  /** what the media remembers (older saves start without it) */
+  pressMemory?: PressMemory;
 }
 
 export interface RetentionMeeting {
