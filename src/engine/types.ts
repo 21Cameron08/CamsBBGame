@@ -255,6 +255,26 @@ export interface Recruit extends Omit<Player, 'teamId' | 'stats' | 'career' | 'n
   lng: number;
   /** headline storyline, e.g. 'Son of a former NBA player' */
   storyline?: string;
+  /** how his decision went, recorded when the user's school was in the mix */
+  decision?: RecruitDecision;
+}
+
+/** Snapshot of a recruit's commitment decision, from the user's point of view */
+export interface RecruitDecision {
+  /** calendar week he decided (0 = Signing Day) */
+  week: number;
+  teamId: string;
+  /** odds at the moment he decided (top schools) */
+  odds: { teamId: string; p: number }[];
+  /** user's chance when he decided (0 if the user couldn't be picked) */
+  userP: number;
+  userStatus: 'won' | 'lost' | 'noOffer' | 'noRoom';
+  /** the school he's compared against: the user on a loss, the runner-up on a win */
+  vsId: string | null;
+  /** what tipped it, most important first, e.g. 'NIL money ($900K vs $400K)' */
+  why: string[];
+  userInterest: number;
+  winnerInterest: number;
 }
 
 export type GameType = 'nc' | 'conf' | 'ctourn' | 'ncaa' | 'exh';

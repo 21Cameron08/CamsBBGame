@@ -133,19 +133,40 @@ export function userGameSocial(state: GameState, g: ScheduledGame, box: BoxScore
   }
 }
 
+/** Third-person line on why he chose, for user-involved decisions */
+function decisionLine(state: GameState, r: Recruit, teamId: string): string {
+  const d = r.decision;
+  if (!d) return '';
+  const t = state.teams[teamId];
+  const me = state.teams[state.user.teamId];
+  const vs = d.vsId ? state.teams[d.vsId] : undefined;
+  const why = d.why.join(' and ');
+  if (d.userStatus === 'won') return why && vs ? ` Sources say ${why} put ${t.school} over the top against ${vs.school}.` : '';
+  if (d.userStatus === 'noOffer') return ` ${me.school} was in the mix but never extended an offer.`;
+  if (d.userStatus === 'noRoom') return ` ${me.school} had no scholarships left to give.`;
+  return ` ${me.school} finished as a finalist${why ? `; sources say ${why} tipped it to ${t.school}` : ''}.`;
+}
+
+function userCaresAbout(state: GameState, r: Recruit): boolean {
+  const d = r.decision;
+  if (!d) return false;
+  return d.userStatus !== 'noOffer' || state.user.board.includes(r.id);
+}
+
 export function commitNews(state: GameState, r: Recruit, teamId: string) {
   const t = state.teams[teamId];
   const isUser = teamId === state.user.teamId;
-  const top = r.rank <= 150 || isUser;
+  const involved = userCaresAbout(state, r);
+  const top = r.rank <= 150 || isUser || involved;
   if (!top) return;
   const stars = '★'.repeat(r.stars);
   const others = r.schools.filter((s) => s.teamId !== teamId).slice(0, 3).map((s) => state.teams[s.teamId]?.school).filter(Boolean);
   addNews(state, {
     kind: 'recruit',
     headline: `${stars} ${r.pos} ${r.first} ${r.last} commits to ${t.school}`,
-    body: `${r.first} ${r.last}, the No. ${r.rank} overall prospect in the class of ${r.classYear} (${r.hometown}${r.type === 'INTL' ? '' : `, ${r.state}`}), committed to ${t.school}${others.length ? ` over ${others.join(', ')}` : ''}. ${r.storyline ? r.storyline + '. ' : ''}The ${fmtHt(r.height)} ${r.archetype.toLowerCase()} gives ${t.mascot} fans plenty to be excited about.`,
+    body: `${r.first} ${r.last}, the No. ${r.rank} overall prospect in the class of ${r.classYear} (${r.hometown}${r.type === 'INTL' ? '' : `, ${r.state}`}), committed to ${t.school}${others.length ? ` over ${others.join(', ')}` : ''}.${involved ? decisionLine(state, r, teamId) : ''} ${r.storyline ? r.storyline + '. ' : ''}The ${fmtHt(r.height)} ${r.archetype.toLowerCase()} gives ${t.mascot} fans plenty to be excited about.`,
     teams: [teamId],
-    important: isUser || r.rank <= 25,
+    important: isUser || r.rank <= 25 || involved,
     personId: r.id,
     personKind: 'recruit',
   });
@@ -154,6 +175,25 @@ export function commitNews(state: GameState, r: Recruit, teamId: string) {
     addSocial(state, { handle: an.handle, name: an.name, verified: true, kind: 'insider', text: `BREAKING: ${stars} ${r.first} ${r.last} (No. ${r.rank} nationally) has committed to ${t.school}. ${rng.pick(['Huge get.', 'Major win on the trail.', 'Did not see this one coming.', 'Expected — the relationship there was strong.'])}`, teamId, personId: r.id });
     addSocial(state, { handle: `${r.first}${r.last}${rng.int(1, 99)}`.replace(/[^A-Za-z0-9]/g, ''), name: `${r.first} ${r.last}`, verified: r.followers > 50000, kind: 'recruit', text: rng.pick([`100% COMMITTED 🙏 #${t.abbr}`, `Home. 💯 Thank you to every coach who recruited me. Let's work ${t.mascot}!`, `God's plan. ${t.school} let's get to work 🏀`, `Committed. No more questions 😤`]), teamId, personId: r.id, likes: Math.round(r.followers * rng.range(0.02, 0.15)) });
   }
+}
+
+/** Signing Day decisions (prospects who waited until the spring) */
+export function signingNews(state: GameState, r: Recruit) {
+  const teamId = r.committed;
+  if (!teamId) return;
+  const t = state.teams[teamId];
+  const isUser = teamId === state.user.teamId;
+  const involved = userCaresAbout(state, r);
+  if (!(r.rank <= 100 || isUser || involved)) return;
+  addNews(state, {
+    kind: 'recruit',
+    headline: `Signing Day: ${'★'.repeat(r.stars)} ${r.pos} ${r.first} ${r.last} picks ${t.school}`,
+    body: `${r.first} ${r.last} (No. ${r.rank} overall) waited until Signing Day and chose ${t.school}.${involved ? decisionLine(state, r, teamId) : ''}`,
+    teams: [teamId],
+    important: isUser || involved,
+    personId: r.id,
+    personKind: 'recruit',
+  });
 }
 
 function fmtHt(inches: number) { return `${Math.floor(inches / 12)}-${inches % 12}`; }

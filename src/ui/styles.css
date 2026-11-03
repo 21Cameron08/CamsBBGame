@@ -285,3 +285,27 @@ input[type='range'] { accent-color: var(--accent); width: 100%; }
 .row-in { animation: rowIn 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 @keyframes rowIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .solid { background: #0f1828 !important; backdrop-filter: none !important; }
+
+/* recruiting: honest odds */
+.rec-pct { width: 50px; text-align: right; font-weight: 800; flex: none; white-space: nowrap; }
+.rec-pct.me { color: #fff; text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 80%, transparent); }
+.rec-warn { font-size: 12px; line-height: 1.35; padding: 6px 9px; border-radius: 9px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03); }
+.rec-warn.bad { color: #ffc2c2; background: rgba(255, 93, 93, 0.09); border-color: rgba(255, 93, 93, 0.28); }
+.rec-warn.gold { color: #ffe7a6; background: rgba(246, 201, 76, 0.08); border-color: rgba(246, 201, 76, 0.26); }
+.rec-strip { padding: 12px 16px; border-left: 4px solid var(--good); }
+.rec-strip.tone-gold { border-left-color: var(--gold); }
+.rec-strip.tone-bad { border-left-color: var(--bad); }
+.rec-strip-num { font-size: 34px; line-height: 1; min-width: 34px; text-align: center; }
+.rec-strip.tone-good .rec-strip-num { color: var(--good); }
+.rec-strip.tone-gold .rec-strip-num { color: var(--gold); }
+.rec-strip.tone-bad .rec-strip-num { color: var(--bad); }
+.rec-you { display: inline-block; font-weight: 800; font-size: 12px; padding: 3px 9px; border-radius: 8px; border: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rec-you.big { font-size: 18px; padding: 6px 12px; border-radius: 10px; }
+.rec-you.good { color: #7ff0c1; background: rgba(34, 211, 143, 0.13); border-color: rgba(34, 211, 143, 0.35); }
+.rec-you.gold { color: #ffe08a; background: rgba(246, 201, 76, 0.13); border-color: rgba(246, 201, 76, 0.35); }
+.rec-you.bad { color: #ffaaaa; background: rgba(255, 93, 93, 0.12); border-color: rgba(255, 93, 93, 0.3); }
+.rec-you.off { color: var(--muted); background: rgba(255, 255, 255, 0.04); border-style: dashed; }
+.rec-verdict { font-size: 12.5px; line-height: 1.4; padding: 8px 11px; border-radius: 10px; }
+.rec-verdict.good { background: rgba(34, 211, 143, 0.1); color: #b6f5da; }
+.rec-verdict.bad { background: rgba(255, 255, 255, 0.04); color: var(--muted); }
+.rec-preview { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 11px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); margin-top: 10px; }

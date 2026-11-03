@@ -11,11 +11,11 @@ import { teamPlayers } from '../../engine/team';
 import { spread } from '../../engine/rankings';
 import { normCdf } from '../../engine/sim';
 import { seasonLabel } from '../../engine/calendar';
-import { RECRUIT_ACTIONS, PRIORITY_LABELS, scoutedValue, userRecruitAction, userOffer, pullOffer, schoolEntry, teamAppeal, type RecruitActionKey } from '../../engine/recruiting';
+import { RECRUIT_ACTIONS, PRIORITY_LABELS, scoutedValue, userOffer, pullOffer, schoolEntry, teamAppeal, recruitOutlook, withRecruitCache, decisionSummary, openSpots, type RecruitActionKey } from '../../engine/recruiting';
 import { nilAvailable } from '../../engine/nil';
 import { ratingColor, teamAccent } from '../color';
 import { OFF_STYLES, DEF_STYLES } from '../screens/Roster';
-import { statusOf } from '../screens/Recruiting';
+import { statusOf, recruitActWithOdds, OddsRow, OutlookWarnings, YourOdds } from '../screens/Recruiting';
 import { sfx } from '../sound';
 
 export function ModalHost() {
@@ -176,12 +176,17 @@ function RecruitModal({ id }: { id: string }) {
   const appeal = teamAppeal(g, r, user, nil, promise);
   const st = statusOf(g, r);
   const fuzzy = r.scouted < 100;
-  const act = (a: RecruitActionKey) => {
-    let res = { ok: false, msg: '' };
-    mutate((gg) => { res = userRecruitAction(gg, r.id, a); });
-    toast(res.msg, res.ok ? 'good' : 'bad');
-    if (res.ok) sfx.click();
-  };
+  const act = (a: RecruitActionKey) => recruitActWithOdds(r, a);
+  const budget = Math.max(0, avail + (mine?.nilOffer ?? 0));
+  const overBudget = nil > budget && nil > 0;
+  const [out, preview, atMax] = withRecruitCache(g, () => [
+    recruitOutlook(g, r),
+    r.committed ? undefined : recruitOutlook(g, r, { nil, promise }),
+    r.committed || !overBudget ? undefined : recruitOutlook(g, r, { nil: budget, promise }),
+  ] as const);
+  const spots = openSpots(g, user.id);
+  const changed = !mine?.offered || mine.nilOffer !== Math.round(nil) || r.userPromise !== promise;
+  const pct = (p: number) => `${Math.round(p * 100)}%`;
   const onBoard = g.user.board.includes(r.id);
   const maxNil = Math.max(r.nilAsk * 2.2, 20000, nil);
   return (
@@ -229,21 +234,22 @@ function RecruitModal({ id }: { id: string }) {
         </div>
         <div className="col" style={{ gap: 14 }}>
           <div className="card">
-            <div className="eyebrow" style={{ marginBottom: 10 }}>Interest</div>
-            {r.schools.length === 0 && <div className="small muted">No schools in the mix yet.</div>}
-            {r.schools.map((s) => {
-              const t = g.teams[s.teamId];
-              const me = s.teamId === user.id;
-              return (
-                <div key={s.teamId} className="row" style={{ gap: 8, marginBottom: 6 }}>
-                  <TeamLogo team={t} size={22} />
-                  <span className={`small ellipsis ${me ? 'b' : ''}`} style={{ width: 120 }}>{t.school}</span>
-                  <div className="bar" style={{ flex: 1 }}><motion.i initial={{ width: 0 }} animate={{ width: `${s.interest}%` }} style={{ background: me ? 'var(--accent)' : teamAccent(t.colors) }} /></div>
-                  <span className="num" style={{ width: 26, textAlign: 'right' }}>{Math.round(s.interest)}</span>
-                  <span className="tiny" style={{ width: 34 }}>{s.offered ? '✉️' : ''}{s.visited ? '✈️' : ''}</span>
+            <div className="row" style={{ marginBottom: 6 }}>
+              <div className="eyebrow" style={{ flex: 1 }}>{r.committed ? 'Recruitment' : 'If he decided today'}</div>
+              {!r.committed && <YourOdds out={out} big />}
+            </div>
+            {!r.committed && <div className="tiny muted" style={{ marginBottom: 10 }}>{out.timing}. The bar is his interest; the % is the real chance he picks each school. Only schools that have offered (✉️) with a scholarship open can win.</div>}
+            {r.decision && r.committed && <div className={`rec-verdict ${r.decision.userStatus === 'won' ? 'good' : 'bad'}`} style={{ marginBottom: 10 }}>{decisionSummary(g, r.decision)}</div>}
+            {out.odds.length === 0 && <div className="small muted">No schools in the mix yet.</div>}
+            <div className="col" style={{ gap: 6 }}>
+              {out.odds.map((o) => (
+                <div key={o.teamId} className="row" style={{ gap: 6 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}><OddsRow g={g} o={o} logo={22} nameW={118} /></div>
+                  <span className="tiny" style={{ width: 34 }}>{o.offered ? '✉️' : ''}{schoolEntry(r, o.teamId)?.visited ? '✈️' : ''}</span>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+            {!r.committed && <div style={{ marginTop: 10 }}><OutlookWarnings out={out} /></div>}
           </div>
           {!r.committed || r.committed !== user.id ? (
             <div className="card glow">
@@ -268,6 +274,27 @@ function RecruitModal({ id }: { id: string }) {
                 </div>
               </div>
               <div className="tiny muted" style={{ marginTop: 6 }}>Your pitch strength: <b style={{ color: 'var(--text)' }}>{Math.round(appeal.total)}</b>/100. Broken promises crush morale.</div>
+              {preview && (
+                <div className="rec-preview">
+                  <div style={{ flex: 1 }}>
+                    <div className="tiny upper muted b" style={{ letterSpacing: '.1em' }}>{mine?.offered ? (changed ? 'With these changes' : 'Your current offer') : 'If you offer this'}</div>
+                    <div className="small">
+                      {!preview.mine?.room
+                        ? <span className="bad">No scholarships left for next season ({spots} open), so this offer can't land.</span>
+                        : <>Interest <b>{Math.round(preview.mine?.interest ?? 0)}</b>{preview.favorite && preview.favorite.teamId !== user.id ? <> · {g.teams[preview.favorite.teamId].school} at <b>{Math.round(preview.favorite.interest)}</b></> : preview.odds.filter((o) => o.p > 0).length === 1 ? <> · no other school has offered yet</> : null}</>}
+                    </div>
+                    {overBudget && preview.mine?.room && (
+                      <div className="tiny bad" style={{ marginTop: 3 }}>More than your NIL pool ({fmtMoneyShort(budget)}). At your max you'd be at <b>{pct(atMax?.userP ?? 0)}</b>.</div>
+                    )}
+                  </div>
+                  {preview.mine?.room && (
+                    <div className="row" style={{ gap: 6 }}>
+                      {mine?.offered && changed && <span className="tiny dim">{pct(out.userP)} →</span>}
+                      <YourOdds out={preview} big />
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="row" style={{ marginTop: 12 }}>
                 {mine?.offered && <button className="btn danger sm" onClick={() => { mutate((gg) => pullOffer(gg, r.id)); toast('Offer pulled.'); }}>Pull offer</button>}
                 <div className="spacer" />

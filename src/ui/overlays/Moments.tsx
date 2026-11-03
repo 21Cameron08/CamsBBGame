@@ -5,6 +5,7 @@ import { PlayerFace, TeamLogo, Stars, Confetti, CoachFace } from '../components/
 import type { GameState, Moment, Team } from '../../engine/types';
 import { mix } from '../color';
 import { sfx } from '../sound';
+import { decisionSummary } from '../../engine/recruiting';
 
 export function MomentHost() {
   const g = useGame((s) => s.game);
@@ -154,6 +155,25 @@ function CommitCeremony({ g, m, onDone }: { g: GameState; m: Extract<Moment, { k
             <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} style={{ marginTop: 22 }}>
               <div className="h1" style={{ fontSize: 40, color: isUser ? 'var(--good)' : '#fff' }}>{isUser ? `HE'S COMING TO ${chosen.school.toUpperCase()}!` : `${r.last} picks ${chosen.school}`}</div>
               <div className="muted" style={{ marginTop: 6 }}>{isUser ? 'The fan base is losing its mind. Welcome to the family.' : `Tough break. ${chosen.school} wins this battle on the trail.`}</div>
+              {r.decision && r.decision.teamId === m.teamId && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }} style={{ marginTop: 14 }}>
+                  <div className="small" style={{ maxWidth: 560, margin: '0 auto', color: 'rgba(255,255,255,.85)' }}>{decisionSummary(g, r.decision)}</div>
+                  {r.decision.odds.length > 1 && (
+                    <div className="row wrap" style={{ justifyContent: 'center', gap: 6, marginTop: 10 }}>
+                      <span className="tiny muted upper b" style={{ letterSpacing: '.1em' }}>Final odds</span>
+                      {r.decision.odds.filter((o, i) => i < 3 || o.teamId === g.user.teamId || o.teamId === m.teamId).slice(0, 5).map((o, i) => {
+                        const t = g.teams[o.teamId];
+                        if (!t) return null;
+                        return (
+                          <motion.span key={o.teamId} className={`pill ${o.teamId === m.teamId ? (isUser ? 'good' : 'accent') : ''}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.1 + i * 0.12 }}>
+                            <TeamLogo team={t} size={14} /> {o.teamId === g.user.teamId ? 'You' : t.abbr} {Math.round(o.p * 100)}%
+                          </motion.span>
+                        );
+                      })}
+                    </div>
+                  )}
+                </motion.div>
+              )}
               <button className="btn primary lg" style={{ marginTop: 16 }} onClick={onDone}>Continue</button>
             </motion.div>
           )}

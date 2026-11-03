@@ -96,7 +96,17 @@ Production build: `npm run build`, then `npm run preview` (or host the `dist/` f
   - Spend weekly hours on texts, calls, assistant visits, in-home visits, official visits and scouting.
   - Make scholarship offers with NIL money and role promises. Break a promise and morale craters.
   - AI programs recruit against you all season.
-  - **Commitment ceremonies**: hats on the table, a drumroll, and the reveal.
+  - **Honest commit odds.** Every recruit shows **"If he decided today"**: his interest in each school and the real percentage chance he picks it. The weekly decision uses exactly those numbers, so a 10-point lead is about 84% and a 20-point lead about 96%.
+  - **Preview before you offer**: drag the NIL slider or change the role promise and watch your odds move. Every call or visit tells you how much it moved them.
+  - **Warnings when a lead won't count**:
+    - you lead but haven't offered
+    - you're out of scholarships
+    - a rival is pulling away for an early commitment
+    - a school he likes more hasn't offered yet
+    - he won't commit until someone reaches 55 interest
+  - A **scholarship counter** shows next season's open spots, returning players, commits and offers out.
+  - **Commitment ceremonies**: hats on the table, a drumroll, and the reveal. Afterwards you see the final odds and why he chose, e.g. "NIL money ($2.25M vs $120K) and pro development".
+  - Prospects whose decision date falls after the season pick on **Signing Day**, using the same odds. Your signees always join your roster, even if the portal filled it.
 - **Transfer portal: a live six-day window.**
   - **Retention meetings first.** Each unhappy player tells you why he's leaving: playing time, NIL money, a bigger stage, a coaching change, or wanting to be closer to home. Pay him, promise a role, or have a heart-to-heart, with the odds of each option shown up front.
   - **Players enter in waves**, including stars who pull out of the NBA draft mid-week. Each one has portal stars, a big-board rank, his reasons and a decision day.
@@ -164,7 +174,7 @@ src/
     schedule.ts    non-conference + conference schedule generation, MTEs, rivalries
     rankings.ts    SRS/NET ratings, WAB, AP poll, NCAA field selection & seeding
     postseason.ts  conference tournaments + 68-team bracket
-    recruiting.ts  class generation, interest model, AI recruiting, user actions
+    recruiting.ts  class generation, interest model, honest commit odds, decisions & reasons, AI recruiting, user actions
     nil.ts         NIL budgets, valuations, deals
     offseason.ts   awards, carousel, declarations, signing day, draft, development
     portal.ts      transfer portal: retention, entry waves, odds, bidding wars, calls, decisions, grades

@@ -4,13 +4,13 @@ import type { Award, GameState, Player, PortalOffer, Team, TeamSeasonHistory, Co
 import { teamPlayers, assignNumbers, autoStrategy, emptyRecord, nilBudgetFor, refreshPower, ROSTER_MAX, ROSTER_MIN, confTierOf } from './team';
 import { confStandings, computeRatings, runPoll } from './rankings';
 import { ncaaResult } from './postseason';
-import { addNews, addSocial, INSIDERS } from './media';
+import { addNews, addSocial, INSIDERS, signingNews } from './media';
 import { achievedLevel, gainXp, genAICoach, setExpectations, hoursForWeek } from './coach';
 import { advanceClass, developPlayer, draftScore, genPlayer, nilValue, recruitToPlayer, roundMoney, emptyStats, fmtMoney } from './player';
 import { allocateAiNil, playerValue, nilSatisfaction } from './nil';
 import { buildCalendar, seasonLabel } from './calendar';
 import { generateSchedule } from './schedule';
-import { generateClass, seedInterest, seedUserBoard, teamAppeal } from './recruiting';
+import { generateClass, seedInterest, seedUserBoard, signingDayDecisions, teamAppeal } from './recruiting';
 import { mediaDayPresser, seasonEndPresser } from './press';
 import { NBA_TEAMS } from '../data/names';
 import { milesBetween } from '../data/places';
@@ -331,11 +331,10 @@ export function doSigning(state: GameState) {
   const os = state.offseason!;
   const recruits = Object.values(state.recruits).sort((a, b) => a.rank - b.rank);
   const roomFor = (teamId: string) => ROSTER_MAX - state.teams[teamId].roster.length;
-  // Late signees: uncommitted recruits pick best school with room
+  // Late signees: uncommitted recruits with offers decide, using the same odds as the season
+  for (const r of signingDayDecisions(state, roomFor)) signingNews(state, r);
   for (const r of recruits) {
     if (r.committed) continue;
-    const options = r.schools.filter((s) => s.offered && roomFor(s.teamId) > 0).sort((a, b) => b.interest - a.interest);
-    if (options.length) { r.committed = options[0].teamId; continue; }
     if (r.stars <= 2 && rng.chance(0.6)) {
       const candidates = Object.values(state.teams).filter((t) => roomFor(t.id) > 1 && t.prestige < r.stars * 20 + 15);
       if (candidates.length) r.committed = rng.pick(candidates).id;
@@ -344,7 +343,8 @@ export function doSigning(state: GameState) {
   for (const r of recruits) {
     if (!r.committed) { delete state.recruits[r.id]; continue; }
     const t = state.teams[r.committed];
-    if (!t || roomFor(t.id) <= 0) { delete state.recruits[r.id]; continue; }
+    // AI programs drop overflow commits; the user's signees always make it (the roster trim below makes room)
+    if (!t || (roomFor(t.id) <= 0 && t.id !== state.user.teamId)) { delete state.recruits[r.id]; continue; }
     const p = recruitToPlayer(r, t.id);
     const s = r.schools.find((x) => x.teamId === t.id);
     p.nil = { amount: s?.nilOffer ?? roundMoney(nilValue(p, t.market) * 0.6), years: 2 };
@@ -356,7 +356,6 @@ export function doSigning(state: GameState) {
   }
   // fill & trim rosters
   for (const t of Object.values(state.teams)) {
-    const ps = teamPlayers(state, t.id);
     while (t.roster.length < ROSTER_MIN) {
       const lvl = 44 + t.prestige * 0.18 + rng.normal(0, 3);
       const p = genPlayer({ ovr: Math.round(lvl), cls: 'FR', teamId: t.id, stars: rng.chance(0.5) ? 1 : 2 });
@@ -365,8 +364,12 @@ export function doSigning(state: GameState) {
       state.players[p.id] = p;
       t.roster.push(p.id);
     }
-    if (ps.length > ROSTER_MAX) {
-      const cut = [...ps].sort((a, b) => a.ovr - b.ovr).slice(0, ps.length - ROSTER_MAX);
+    const all = teamPlayers(state, t.id);
+    if (all.length > ROSTER_MAX) {
+      const isUser = t.id === state.user.teamId;
+      const keep = new Set(isUser ? os.signed : []);
+      const cut = all.filter((p) => !keep.has(p.id)).sort((a, b) => a.ovr - b.ovr).slice(0, all.length - ROSTER_MAX);
+      if (isUser && cut.length) addNews(state, { kind: 'user', headline: `Roster crunch: ${t.school} releases ${cut.map((p) => `${p.first} ${p.last}`).join(', ')}`, body: `With the signing class arriving and only ${ROSTER_MAX} scholarships, ${t.school} let ${cut.length > 1 ? 'its lowest-rated players' : 'its lowest-rated player'} go to make room.`, teams: [t.id], important: true });
       for (const p of cut) { removeFromTeam(state, p, 'Released'); delete state.players[p.id]; }
     }
     assignNumbers(state, t);

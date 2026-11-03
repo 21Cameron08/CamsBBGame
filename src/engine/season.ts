@@ -7,7 +7,7 @@ import { computeRatings, runPoll, spread } from './rankings';
 import { advanceBrackets, buildNcaa, setupConfTourneys, NCAA_EXIT_LABEL } from './postseason';
 import { CT_FIRST, LAST_REG_DAY, NCAA_FIRST, NCAA_LAST, SELECTION_DAY, phaseForDay, NCAA_ROUND_NAMES } from './calendar';
 import { addNews, addSocial, commitNews, gameRecapNews, injuryNews, pollNews, randomBuzz, upsetNews, userGameSocial, statLine } from './media';
-import { aiRecruitingWeek, updateRecruits } from './recruiting';
+import { aiRecruitingWeek, decideRecruits, refreshRecruitInterest } from './recruiting';
 import { maybeWeeklyEvent } from './events';
 import { gainXp, hoursForWeek, applyEffects } from './coach';
 import { postgamePresser } from './press';
@@ -229,14 +229,16 @@ export function weeklyTick(state: GameState, week: number) {
     const ranks = runPoll(state, label);
     pollNews(state, label, ranks);
   }
-  // recruiting
+  // recruiting: decisions use the board exactly as the user left it this week,
+  // then rivals put in next week's work and the board refreshes.
+  const commits = decideRecruits(state, week);
   aiRecruitingWeek(state, week);
-  const commits = updateRecruits(state, week);
+  refreshRecruitInterest(state);
   for (const r of commits) {
     commitNews(state, r, r.committed!);
     const userInvolved = r.schools.some((s) => s.teamId === state.user.teamId && s.offered);
     if (userInvolved || r.committed === state.user.teamId) {
-      state.user.moments.push({ kind: 'commit', recruitId: r.id, teamId: r.committed!, others: r.schools.slice(0, 4).map((s) => s.teamId) });
+      state.user.moments.push({ kind: 'commit', recruitId: r.id, teamId: r.committed!, others: [r.committed!, ...(userInvolved ? [state.user.teamId] : []), ...(r.decision?.odds.map((o) => o.teamId) ?? []), ...r.schools.map((s) => s.teamId)].filter((id, i, a) => a.indexOf(id) === i).slice(1, 4) });
       if (r.committed === state.user.teamId) gainXp(state, 10 + r.stars * 6);
     }
   }

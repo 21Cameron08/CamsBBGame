@@ -271,11 +271,28 @@ export function teamScore(state: GameState, e: PortalEntry, teamId: string, offe
   return s;
 }
 
+// Signed high-school commits count against next season's roster. They don't change during the portal window.
+let signeeCache: { recs: GameState['recruits']; n: number; map: Map<string, number> } | null = null;
+export function signeeCount(state: GameState, teamId: string): number {
+  const n = Object.keys(state.recruits).length;
+  if (!signeeCache || signeeCache.recs !== state.recruits || signeeCache.n !== n) {
+    const map = new Map<string, number>();
+    for (const r of Object.values(state.recruits)) if (r.committed) map.set(r.committed, (map.get(r.committed) ?? 0) + 1);
+    signeeCache = { recs: state.recruits, n, map };
+  }
+  return signeeCache.map.get(teamId) ?? 0;
+}
+/** Open spots on next season's roster: current players plus incoming signees */
+export function rosterRoom(state: GameState, teamId: string): number {
+  const t = state.teams[teamId];
+  return t ? ROSTER_MAX - t.roster.length - signeeCount(state, teamId) : 0;
+}
+
 const TEMP = 5;
 /** Honest odds: the % shown is the real chance he picks each school if he decided now */
 export function entryOdds(state: GameState, e: PortalEntry, extra?: PortalOffer): { teamId: string; p: number; score: number; nil: number }[] {
   const offers = [...e.offers.filter((o) => !extra || o.teamId !== extra.teamId), ...(extra ? [extra] : [])]
-    .filter((o) => state.teams[o.teamId] && state.teams[o.teamId].roster.length < ROSTER_MAX);
+    .filter((o) => state.teams[o.teamId] && rosterRoom(state, o.teamId) > 0);
   if (!offers.length) return [];
   const sc = offers.map((o) => ({ teamId: o.teamId, nil: o.nil, score: teamScore(state, e, o.teamId, o) }));
   const max = Math.max(...sc.map((x) => x.score));
@@ -355,7 +372,10 @@ export function portalMakeOffer(state: GameState, id: string, nil: number, years
   const p = state.players[id];
   if (!ps || !e || !p || e.status !== 'available' || e.enterDay > ps.day) return { ok: false, msg: 'He’s not available.' };
   const uid = state.user.teamId;
-  if (state.teams[uid].roster.length >= ROSTER_MAX) return { ok: false, msg: 'Your roster is full (15). Free a spot first.' };
+  if (rosterRoom(state, uid) <= 0) {
+    const inc = signeeCount(state, uid);
+    return { ok: false, msg: inc ? `No room: ${state.teams[uid].roster.length} players + ${inc} incoming signee${inc > 1 ? 's' : ''} fills all ${ROSTER_MAX} spots.` : `Your roster is full (${ROSTER_MAX}). Free a spot first.` };
+  }
   const room = Math.max(0, userNilRoom(state, id));
   nil = roundMoney(Math.max(0, nil));
   if (nil > room && nil - room <= 25_000) nil = Math.floor(room / 1000) * 1000; // rounding nudged it past the room

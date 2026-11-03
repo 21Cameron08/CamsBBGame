@@ -1,7 +1,7 @@
 // Recruiting: class generation, interest model, AI recruiting, user actions, commitments.
 import { rng, clamp } from './rng';
-import type { GameState, Recruit, RecruitPriorities, RecruitSchool, Team, Pos, RecruitType } from './types';
-import { ARCHETYPES_BY_POS, buildRatings, calcOvr, genFollowers, genName, genTraits, pickPlace, nilValue, randomPos, roundMoney } from './player';
+import type { GameState, Recruit, RecruitPriorities, RecruitSchool, Team, Pos, RecruitType, RecruitDecision } from './types';
+import { ARCHETYPES_BY_POS, buildRatings, calcOvr, fmtMoney, genFollowers, genName, genTraits, pickPlace, nilValue, randomPos, roundMoney } from './player';
 import { milesBetween } from '../data/places';
 import { teamPlayers, ROSTER_MAX, confTierOf } from './team';
 import { staffEffects } from './staff';
@@ -220,11 +220,12 @@ function ensureSchool(r: Recruit, teamId: string): RecruitSchool {
   return s;
 }
 
-export function interestOf(state: GameState, r: Recruit, s: RecruitSchool): number {
+export function interestOf(state: GameState, r: Recruit, s: RecruitSchool, promise?: Recruit['userPromise']): number {
   const team = state.teams[s.teamId];
   if (!team) return 0;
   const isUser = s.teamId === state.user.teamId;
-  const appeal = teamAppeal(state, r, team, s.nilOffer, isUser ? r.userPromise : null).total;
+  const pr = isUser ? (promise !== undefined ? promise : r.userPromise) : null;
+  const appeal = teamAppeal(state, r, team, s.nilOffer, pr).total;
   return clamp(appeal * 0.55 + s.rel * 0.5 + (s.offered ? 5 : 0), 0, 100);
 }
 
@@ -331,42 +332,304 @@ export function aiRecruitingWeek(state: GameState, week: number) {
   commitCache = null;
 }
 
-/** Weekly update of interests + commitments. Returns newly committed recruit ids */
-export function updateRecruits(state: GameState, week: number): Recruit[] {
+const spotsCache = new Map<string, number>();
+function openSpotsCached(state: GameState, teamId: string) {
+  if (!commitCache) return openSpots(state, teamId);
+  if (!spotsCache.has(teamId)) spotsCache.set(teamId, openSpots(state, teamId));
+  return spotsCache.get(teamId)!;
+}
+
+// ---------------- Commitment odds ----------------
+/**
+ * Softmax temperature for commitment odds. Head-to-head, a 5-point interest
+ * lead is about 70%, 10 points about 84% and 20 points about 96%.
+ */
+export const COMMIT_TEMP = 6;
+
+export interface RecruitOdds {
+  teamId: string;
+  /** live interest in this school (0-100) */
+  interest: number;
+  /** chance he picks this school if he decided right now (0 if he can't pick it) */
+  p: number;
+  offered: boolean;
+  /** the school has a scholarship open for next season */
+  room: boolean;
+}
+
+/** A hypothetical offer from the user, to preview odds before sending it */
+export interface UserOfferPreview { nil: number; promise: Recruit['userPromise'] }
+
+/**
+ * Honest commitment odds: the same numbers the weekly decision uses.
+ * Only schools that have offered and still have a scholarship open can be picked.
+ */
+export function recruitOdds(state: GameState, r: Recruit, preview?: UserOfferPreview, roomFn?: (teamId: string) => boolean): RecruitOdds[] {
+  const uid = state.user.teamId;
+  const hasRoom = roomFn ?? ((id: string) => openSpotsCached(state, id) > 0);
+  const schools = [...r.schools];
+  if (preview && !schools.some((s) => s.teamId === uid)) schools.push({ teamId: uid, interest: 0, offered: false, nilOffer: 0, visited: false, rel: 0 });
+  const rows: RecruitOdds[] = schools.filter((s) => state.teams[s.teamId]).map((s) => {
+    let entry = s, promise: Recruit['userPromise'] | undefined;
+    if (preview && s.teamId === uid) {
+      // mirror userOffer(): a first offer also earns a small relationship bump
+      const rel = s.offered ? s.rel : clamp(s.rel + 6 * (1 - s.rel / 110), 0, 100);
+      entry = { ...s, offered: true, nilOffer: Math.max(0, Math.round(preview.nil)), rel };
+      promise = preview.promise;
+    }
+    return { teamId: s.teamId, interest: interestOf(state, r, entry, promise), p: 0, offered: entry.offered, room: hasRoom(s.teamId) };
+  });
+  const elig = rows.filter((x) => x.offered && x.room);
+  if (elig.length) {
+    const max = Math.max(...elig.map((x) => x.interest));
+    let tot = 0;
+    for (const x of elig) { x.p = Math.exp((x.interest - max) / COMMIT_TEMP); tot += x.p; }
+    for (const x of elig) x.p /= tot;
+  }
+  return rows.sort((a, b) => b.p - a.p || b.interest - a.interest);
+}
+
+/** Run UI-side odds lookups with the batch caches built once (fast for long lists) */
+export function withRecruitCache<T>(state: GameState, fn: () => T): T {
   buildDepthCache(state);
   buildCommitCache(state);
-  const committed: Recruit[] = [];
-  for (const r of Object.values(state.recruits)) {
-    r.userWeek = { call: false, text: false, asst: false, hc: false, visit: false, scout: r.userWeek.scout };
-    if (r.committed) continue;
-    for (const s of r.schools) s.interest = interestOf(state, r, s);
-    r.schools.sort((a, b) => b.interest - a.interest);
-    if (r.schools.length > 10) r.schools = r.schools.slice(0, 10);
-    const offered = r.schools.filter((s) => s.offered && openSpotsCached(state, s.teamId) > 0);
-    if (!offered.length) continue;
-    const top = offered[0];
-    const second = offered[1]?.interest ?? 0;
-    const ready = (week >= r.decisionWeek && top.interest >= 55) || (top.interest >= 82 && top.interest - second >= 12) || week >= 32;
-    if (!ready) continue;
-    if (!rng.chance(week >= r.decisionWeek ? 0.55 : 0.25)) continue;
-    // weighted choice among top offers
-    const choice = rng.weighted(offered.slice(0, 4), offered.slice(0, 4).map((s) => Math.pow(s.interest, 5)));
-    r.committed = choice.teamId;
-    r.committedWeek = week;
-    committed.push(r);
-    commitCache!.set(choice.teamId, (commitCache!.get(choice.teamId) ?? 0) + 1);
-    spotsCache.delete(choice.teamId);
+  try { return fn(); } finally { depthCache = null; commitCache = null; spotsCache.clear(); }
+}
+
+/** Last calendar week of the season; recruits with a later decision week wait for Signing Day */
+export function lastRecruitWeek(state: GameState): number {
+  let w = 0;
+  for (const d of state.calendar) if (d.week > w) w = d.week;
+  return w || 23;
+}
+
+/** Would he commit early this week? (big favorite pulling away) */
+function earlyReady(top: number, second: number) {
+  return top >= 82 && top - second >= 12;
+}
+
+export interface RecruitOutlook {
+  odds: RecruitOdds[];
+  mine: RecruitOdds | undefined;
+  /** user's chance if he decided now */
+  userP: number;
+  /** best school by interest (whether or not it has offered) */
+  leader: RecruitOdds | undefined;
+  /** favorite among schools he can actually pick */
+  favorite: RecruitOdds | undefined;
+  /** warnings about the user's position, most urgent first */
+  warnings: { level: 'bad' | 'gold'; text: string }[];
+  /** when he's expected to decide */
+  timing: string;
+  deciding: boolean;
+}
+
+/** Everything the UI needs to show where the user stands with a recruit */
+export function recruitOutlook(state: GameState, r: Recruit, preview?: UserOfferPreview): RecruitOutlook {
+  const uid = state.user.teamId;
+  const odds = recruitOdds(state, r, preview);
+  const mine = odds.find((o) => o.teamId === uid);
+  const byInterest = [...odds].sort((a, b) => b.interest - a.interest);
+  const leader = byInterest[0];
+  const favorite = odds[0]?.p ? odds[0] : undefined;
+  const week = state.calendar[state.day]?.week ?? 0;
+  const last = lastRecruitWeek(state);
+  const inSeason = state.phase === 'preseason' || state.phase === 'regular' || state.phase === 'confTourney' || state.phase === 'selection' || state.phase === 'ncaa';
+  const warnings: RecruitOutlook['warnings'] = [];
+  if (!r.committed) {
+    const leadsByInterest = !!mine && leader?.teamId === uid && mine.interest > 0;
+    if (!mine || !mine.offered) {
+      if (leadsByInterest) warnings.push({ level: 'bad', text: `You lead, but you haven't offered. He can't commit to you without a scholarship offer.` });
+      else if (mine) warnings.push({ level: 'gold', text: `No offer yet, so he can't pick you. Offer to get in the race.` });
+    } else if (!mine.room) {
+      warnings.push({ level: 'bad', text: `No scholarships left for next season, so your offer can't land. Free up a spot or he'll go elsewhere.` });
+    }
+    const elig = odds.filter((o) => o.p > 0).sort((a, b) => b.interest - a.interest);
+    if (elig.length && elig[0].teamId !== uid && earlyReady(elig[0].interest, elig[1]?.interest ?? 0) && inSeason)
+      warnings.push({ level: 'bad', text: `${state.teams[elig[0].teamId].school} is pulling away. He could commit there any week now.` });
+    if (mine?.offered && mine.room && favorite && favorite.teamId !== uid && mine.p < favorite.p) {
+      const gap = Math.round(favorite.interest - mine.interest);
+      if (gap > 0) warnings.push({ level: 'gold', text: `${state.teams[favorite.teamId].school} leads by ${gap} interest. Close the gap before he decides.` });
+    }
+    if (mine?.offered && mine.room) {
+      // a school he likes more could still offer (an offer adds about 5 interest)
+      const lurker = odds.find((o) => !o.offered && o.room && o.teamId !== uid && o.interest + 5 > mine.interest);
+      if (lurker) warnings.push({ level: 'gold', text: `${state.teams[lurker.teamId].school} (${Math.round(lurker.interest)}) hasn't offered yet. If they do, they'd ${lurker.interest > mine.interest ? 'jump ahead of' : 'be right with'} you.` });
+    }
+    const topElig = elig[0]?.interest ?? 0;
+    if (inSeason && r.decisionWeek <= lastRecruitWeek(state) && topElig < 55 && (mine?.offered || leadsByInterest))
+      warnings.push({ level: 'gold', text: `He won't commit during the season until a school that offered reaches 55 interest${mine?.offered ? ` (you're at ${Math.round(mine.interest)})` : ''}. Otherwise he waits for Signing Day.` });
   }
+  let timing = '';
+  let deciding = false;
+  if (r.committed) timing = 'Committed';
+  else if (!inSeason) { timing = 'Decides on Signing Day'; deciding = true; }
+  else if (r.decisionWeek > last) timing = 'Decides on Signing Day';
+  else {
+    const left = r.decisionWeek - week;
+    if (left <= 0) { timing = (leader?.interest ?? 0) >= 55 ? 'Could decide this week' : 'Ready to decide, waiting for a school to stand out'; deciding = true; }
+    else timing = `Decision in ~${left} wk`;
+  }
+  return { odds, mine, userP: mine?.p ?? 0, leader, favorite, warnings, timing, deciding };
+}
+
+// ---------------- Why he chose ----------------
+const FACTOR_LABEL: Record<keyof RecruitPriorities | 'rel', string> = {
+  nil: 'NIL money', pt: 'playing time', prestige: 'program prestige', proximity: 'staying close to home',
+  coach: 'the head coach', pro: 'pro development', academics: 'academics', winning: 'winning right now', rel: 'the relationship',
+};
+
+/** Factors where school A beat school B for this recruit, biggest edge first */
+export function decisionFactors(state: GameState, r: Recruit, aId: string, bId: string): { key: keyof RecruitPriorities | 'rel'; edge: number; label: string }[] {
+  const ta = state.teams[aId], tb = state.teams[bId];
+  const sa = schoolEntry(r, aId), sb = schoolEntry(r, bId);
+  if (!ta || !tb) return [];
+  const uid = state.user.teamId;
+  const pa = teamAppeal(state, r, ta, sa?.nilOffer ?? 0, aId === uid ? r.userPromise : null).parts;
+  const pb = teamAppeal(state, r, tb, sb?.nilOffer ?? 0, bId === uid ? r.userPromise : null).parts;
+  const out: { key: keyof RecruitPriorities | 'rel'; edge: number; label: string }[] = [];
+  for (const k of PRIORITY_KEYS) {
+    const edge = (pa[k] - pb[k]) * r.priorities[k] * 0.55;
+    let label = FACTOR_LABEL[k];
+    if (k === 'nil' && (sa?.nilOffer || sb?.nilOffer)) label = `NIL money (${fmtMoney(sa?.nilOffer ?? 0)} vs ${fmtMoney(sb?.nilOffer ?? 0)})`;
+    if (k === 'proximity' && r.type !== 'INTL') {
+      const [lat, lng] = recruitLatLng(r);
+      label = `staying close to home (${Math.round(milesBetween(lat, lng, ta.lat, ta.lng))} mi vs ${Math.round(milesBetween(lat, lng, tb.lat, tb.lng))} mi)`;
+    }
+    if (k === 'prestige') { const ga = r.stars * 18 - ta.prestige, gb = r.stars * 18 - tb.prestige; out.push({ key: k, edge: edge + ((gb > 20 ? (gb - 20) * 0.5 : 0) - (ga > 20 ? (ga - 20) * 0.5 : 0)) * 0.55, label }); continue; }
+    out.push({ key: k, edge, label });
+  }
+  out.push({ key: 'rel', edge: ((sa?.rel ?? 0) - (sb?.rel ?? 0)) * 0.5, label: FACTOR_LABEL.rel });
+  return out.filter((f) => f.edge > 0.6).sort((a, b) => b.edge - a.edge);
+}
+
+function buildDecision(state: GameState, r: Recruit, teamId: string, odds: RecruitOdds[], week: number): RecruitDecision | undefined {
+  const uid = state.user.teamId;
+  const mine = odds.find((o) => o.teamId === uid);
+  if (!mine) return undefined; // user wasn't in the mix
+  const won = teamId === uid;
+  const runnerUp = odds.find((o) => o.teamId !== teamId && o.p > 0) ?? odds.find((o) => o.teamId !== teamId);
+  const vsId = won ? runnerUp?.teamId ?? null : uid;
+  const why = vsId ? decisionFactors(state, r, teamId, vsId).slice(0, 2).map((f) => f.label) : [];
+  const winner = odds.find((o) => o.teamId === teamId);
+  return {
+    week,
+    teamId,
+    odds: odds.filter((o, i) => o.p > 0 && (i < 5 || o.teamId === uid || o.teamId === teamId)).map((o) => ({ teamId: o.teamId, p: Math.round(o.p * 1000) / 1000 })),
+    userP: Math.round(mine.p * 1000) / 1000,
+    userStatus: won ? 'won' : !mine.offered ? 'noOffer' : !mine.room ? 'noRoom' : 'lost',
+    vsId,
+    why,
+    userInterest: Math.round(mine.interest),
+    winnerInterest: Math.round(winner?.interest ?? 0),
+  };
+}
+
+/** Plain-English summary of a decision, written to the user */
+export function decisionSummary(state: GameState, d: RecruitDecision): string {
+  const t = state.teams[d.teamId];
+  const vs = d.vsId ? state.teams[d.vsId] : undefined;
+  const pct = (p: number) => (p > 0 && p < 0.005 ? 'under 1%' : p < 1 && p > 0.995 ? 'over 99%' : `${Math.round(p * 100)}%`);
+  const why = d.why.length ? d.why.join(' and ') : '';
+  if (d.userStatus === 'won') {
+    const fav = d.odds.find((o) => o.teamId !== d.teamId);
+    if (d.userP < 0.35 && fav && fav.p > d.userP) return `Upset on the trail: you were at ${pct(d.userP)} and ${state.teams[fav.teamId]?.school ?? 'a rival'} was the favorite at ${pct(fav.p)}.${why ? ` What won him over: ${why}.` : ''}`;
+    return `${why ? `Your edge: ${why}.` : 'He picked you.'} You had a ${pct(d.userP)} chance${vs ? `; ${vs.school} was next` : ''}.`;
+  }
+  if (d.userStatus === 'noOffer') return `You never offered, so he couldn't pick you${d.userInterest >= d.winnerInterest ? ', even though you had the most interest' : ''}.`;
+  if (d.userStatus === 'noRoom') return `You were out of scholarships for next season, so your offer couldn't land.`;
+  const lead = d.userInterest - d.winnerInterest;
+  const tail = lead > 0 ? ` You led on interest (${d.userInterest} to ${d.winnerInterest}) and had a ${pct(d.userP)} chance; the other ${pct(1 - d.userP)} came in.` : ` You were at ${pct(d.userP)} when he decided.`;
+  return `${t?.school ?? 'They'} won on ${why || 'the final lean'}.${tail}`;
+}
+
+/** Weekly decisions: who commits this week. Uses exactly the odds the UI shows. */
+export function decideRecruits(state: GameState, week: number): Recruit[] {
+  buildDepthCache(state);
+  buildCommitCache(state);
   spotsCache.clear();
-  depthCache = null;
-  commitCache = null;
+  const committed: Recruit[] = [];
+  try {
+    for (const r of Object.values(state.recruits)) {
+      r.userWeek = { call: false, text: false, asst: false, hc: false, visit: false, scout: r.userWeek.scout };
+      if (r.committed) continue;
+      const odds = recruitOdds(state, r);
+      for (const s of r.schools) s.interest = odds.find((o) => o.teamId === s.teamId)?.interest ?? s.interest;
+      const elig = odds.filter((o) => o.p > 0).sort((a, b) => b.interest - a.interest);
+      if (!elig.length) continue;
+      const top = elig[0].interest;
+      const second = elig[1]?.interest ?? 0;
+      const ready = (week >= r.decisionWeek && top >= 55) || earlyReady(top, second) || week >= 32;
+      if (!ready) continue;
+      if (!rng.chance(week >= r.decisionWeek ? 0.55 : 0.25)) continue;
+      const choice = rng.weighted(elig, elig.map((o) => o.p));
+      r.committed = choice.teamId;
+      r.committedWeek = week;
+      r.decision = buildDecision(state, r, choice.teamId, odds, week);
+      committed.push(r);
+      commitCache!.set(choice.teamId, (commitCache!.get(choice.teamId) ?? 0) + 1);
+      spotsCache.delete(choice.teamId);
+    }
+  } finally {
+    spotsCache.clear();
+    depthCache = null;
+    commitCache = null;
+  }
   return committed;
 }
 
-const spotsCache = new Map<string, number>();
-function openSpotsCached(state: GameState, teamId: string) {
-  if (!spotsCache.has(teamId)) spotsCache.set(teamId, openSpots(state, teamId));
-  return spotsCache.get(teamId)!;
+/** Recompute interest after the week's recruiting so the board shows where things stand */
+export function refreshRecruitInterest(state: GameState) {
+  buildDepthCache(state);
+  const uid = state.user.teamId;
+  try {
+    for (const r of Object.values(state.recruits)) {
+      if (r.committed) continue;
+      for (const s of r.schools) s.interest = interestOf(state, r, s);
+      r.schools.sort((a, b) => b.interest - a.interest);
+      if (r.schools.length > 10) {
+        // never drop the user's entry (or the offer that comes with it)
+        const mine = r.schools.find((s) => s.teamId === uid);
+        r.schools = r.schools.slice(0, 10);
+        if (mine && !r.schools.includes(mine)) r.schools.push(mine);
+      }
+    }
+  } finally {
+    depthCache = null;
+  }
+}
+
+/** Weekly update of interests + commitments. Returns newly committed recruits */
+export function updateRecruits(state: GameState, week: number): Recruit[] {
+  const commits = decideRecruits(state, week);
+  refreshRecruitInterest(state);
+  return commits;
+}
+
+/** Signing Day: recruits still deciding pick among schools with room, using the same odds */
+export function signingDayDecisions(state: GameState, roomFor: (teamId: string) => number): Recruit[] {
+  const out: Recruit[] = [];
+  const pending = new Map<string, number>();
+  for (const r of Object.values(state.recruits)) if (r.committed) pending.set(r.committed, (pending.get(r.committed) ?? 0) + 1);
+  const room = (id: string) => roomFor(id) - (pending.get(id) ?? 0) > 0;
+  const recruits = Object.values(state.recruits).filter((r) => !r.committed).sort((a, b) => a.rank - b.rank);
+  buildDepthCache(state);
+  try {
+    for (const r of recruits) {
+      const odds = recruitOdds(state, r, undefined, room);
+      const elig = odds.filter((o) => o.p > 0);
+      if (!elig.length) continue;
+      const choice = rng.weighted(elig, elig.map((o) => o.p));
+      r.committed = choice.teamId;
+      r.committedWeek = 0;
+      r.decision = buildDecision(state, r, choice.teamId, odds, 0);
+      pending.set(choice.teamId, (pending.get(choice.teamId) ?? 0) + 1);
+      out.push(r);
+    }
+  } finally {
+    depthCache = null;
+  }
+  return out;
 }
 
 /** User performs a recruiting action. Returns message or error */
