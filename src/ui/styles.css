@@ -313,3 +313,26 @@ input[type='range'] { accent-color: var(--accent); width: 100%; }
 /* press conference: the coach's own words, read back */
 .press-quote { margin: 0 0 12px; padding: 10px 14px; border-left: 3px solid var(--gold); border-radius: 8px; background: rgba(246, 201, 76, 0.08); color: #ffe7a6; font-size: 14px; font-style: italic; line-height: 1.4; }
 .press-quote .upper { font-style: normal; }
+
+/* player development */
+.dev-intro { padding: 14px 18px; }
+.dev-card { padding: 14px 16px; transition: border-color .2s, box-shadow .2s; }
+.dev-card.spot { border-color: rgba(246, 201, 76, 0.55); box-shadow: 0 0 0 1px rgba(246, 201, 76, 0.18), 0 10px 30px rgba(246, 201, 76, 0.06); }
+.dev-star { border: 0; background: transparent; font-size: 20px; cursor: pointer; line-height: 1; padding: 2px 4px; color: var(--dim); transition: transform .15s; }
+.dev-star:hover { transform: scale(1.2); }
+.dev-star.on { filter: drop-shadow(0 0 6px rgba(246, 201, 76, 0.7)); }
+.dev-focus-row { display: flex; gap: 5px; margin-top: 10px; flex-wrap: wrap; }
+.dev-focus { position: relative; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.04); color: var(--text); border-radius: 9px; padding: 5px 9px; font-size: 15px; cursor: pointer; transition: background .15s, border-color .15s; }
+.dev-focus:hover { background: rgba(255, 255, 255, 0.09); }
+.dev-focus.on { background: color-mix(in srgb, var(--accent) 24%, transparent); border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+.dev-focus .lbl { font-size: 12px; font-weight: 800; }
+.dev-focus .rec { position: absolute; top: -6px; right: -4px; font-style: normal; font-size: 10px; color: var(--gold); }
+.dev-goal { margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); }
+.dev-goal.behind, .dev-goal.missed { border-color: rgba(246, 201, 76, 0.3); }
+.dev-goal.onTrack, .dev-goal.met { border-color: rgba(34, 211, 143, 0.28); }
+.dev-practice { text-align: left; cursor: pointer; color: var(--text); padding: 14px 16px; }
+.dev-practice.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 12px 30px color-mix(in srgb, var(--accent) 18%, transparent); }
+.dev-report-row { padding: 10px 14px; }
+.dev-report-row.breakout { border-color: rgba(246, 201, 76, 0.45); background: linear-gradient(90deg, rgba(246, 201, 76, 0.08), transparent 60%); }
+.dev-report-row.stalled { opacity: 0.85; }
+.dev-chg { font-size: 12px; padding: 2px 8px; border-radius: 7px; background: rgba(255, 255, 255, 0.05); white-space: nowrap; }

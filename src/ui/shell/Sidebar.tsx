@@ -5,6 +5,7 @@ const ITEMS: { id: Screen; icon: string; label: string; section?: string }[] = [
   { id: 'home', icon: '🏠', label: 'Dashboard', section: 'Program' },
   { id: 'inbox', icon: '📨', label: 'Office' },
   { id: 'roster', icon: '👥', label: 'Roster & Lineup' },
+  { id: 'development', icon: '🏋️', label: 'Player Development' },
   { id: 'staff', icon: '📋', label: 'Coaching Staff' },
   { id: 'schedule', icon: '📅', label: 'Schedule' },
   { id: 'recruiting', icon: '🎯', label: 'Recruiting', section: 'Build' },

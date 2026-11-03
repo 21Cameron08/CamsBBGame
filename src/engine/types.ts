@@ -673,6 +673,8 @@ export interface GameState {
   offseason: OffseasonState | null;
   /** user's coaching staff (added in save v2; migrated on load) */
   staff?: StaffState;
+  /** player development: plans, practice, goals (created on first use) */
+  development?: DevelopmentState;
   /** non-conference scheduling (added in save v3) */
   scheduling?: SchedulingState;
 }
@@ -774,4 +776,52 @@ export interface OffseasonState {
   summary: string;
   achieved: number;
   securityDelta: number;
+}
+
+// ---------------- Player development ----------------
+export type DevFocus = 'balanced' | 'shooting' | 'finishing' | 'playmaking' | 'perimeterD' | 'interior' | 'strength';
+export type PracticeFocus = 'balanced' | 'skill' | 'gameprep' | 'conditioning' | 'recovery' | 'intense';
+export type GoalKind = 'pro' | 'minutes' | 'starter' | 'scoring' | 'winning';
+export interface PlayerGoal {
+  kind: GoalKind;
+  target: number;
+  label: string;
+  season: number;
+  result?: 'met' | 'missed';
+}
+export interface DevReportRow {
+  id: string;
+  name: string;
+  pos: Pos;
+  cls: ClassYear;
+  focus: DevFocus;
+  spotlight: boolean;
+  before: number;
+  after: number;
+  pot: number;
+  /** rating changes on the plan's focus ratings */
+  changes: Partial<Record<RatingKey, [number, number]>>;
+  archetypeFrom?: string;
+  archetypeTo?: string;
+  draftBefore?: number;
+  draftAfter?: number;
+  tag?: 'breakout' | 'stalled' | 'newcomer';
+}
+export interface DevelopmentState {
+  /** player id -> development focus (user's team) */
+  plans: Record<string, DevFocus>;
+  /** up to three players getting extra staff attention */
+  spotlight: string[];
+  /** this week's practice plan */
+  practice: PracticeFocus;
+  /** weeks spent on each practice plan this season */
+  practiceLog: Partial<Record<PracticeFocus, number>>;
+  /** fractional in-season rating progress */
+  bank: Record<string, Partial<Record<RatingKey, number>>>;
+  /** in-season rating gains this season */
+  seasonGains: Record<string, Partial<Record<RatingKey, number>>>;
+  goals: Record<string, PlayerGoal>;
+  goalsSeason: number;
+  /** the most recent summer of development */
+  summer?: { season: number; done: boolean; rows: DevReportRow[] };
 }

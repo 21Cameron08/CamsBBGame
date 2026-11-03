@@ -2,6 +2,7 @@ import type { GameState } from '../../engine/types';
 import { userGameToday, nextUserGame } from '../../engine/season';
 import { seasonLabel } from '../../engine/calendar';
 import { decidingToday } from '../../engine/portal';
+import { summerDone } from '../../engine/development';
 import { useGame } from '../../store/gameStore';
 
 export interface AdvanceAction { label: string; sub?: string; run: () => void; kind?: 'primary' | 'gold' }
@@ -53,6 +54,7 @@ export function advanceActions(g: GameState): { main: AdvanceAction; extra: Adva
     case 'draft':
       return { main: { label: 'Continue: Summer Development', sub: 'Draft complete', run: () => void st.continueOffseason(), kind: 'primary' }, extra: [] };
     case 'progression':
+      if (!summerDone(g)) return { main: { label: 'Run Summer Workouts', sub: 'Development plans lock in', run: () => { st.nav('offseason'); void st.continueOffseason(); }, kind: 'gold' }, extra: [] };
       return { main: { label: 'Continue: Scheduling Office', sub: 'Build next year’s non-conference slate', run: () => void st.continueOffseason(), kind: 'primary' }, extra: [] };
     case 'scheduling': {
       const sc = g.scheduling;

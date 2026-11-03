@@ -11,6 +11,32 @@ import { classRankings } from '../../engine/recruiting';
 import { seasonLabel } from '../../engine/calendar';
 import type { GameState, ScheduledGame } from '../../engine/types';
 import { teamAccent } from '../color';
+import { PRACTICE_INFO, PRACTICE_ORDER, goalStatus } from '../../engine/development';
+
+const IN_SEASON_PHASES = ['preseason', 'regular', 'confTourney', 'selection', 'ncaa'];
+
+function PracticeCard({ g }: { g: GameState }) {
+  const { nav, mutate } = useGame.getState();
+  const dv = g.development!;
+  const goals = Object.entries(dv.goalsSeason === g.season ? dv.goals : {}).map(([id, gl]) => (g.players[id] ? goalStatus(g, g.players[id], gl).status : 'pending'));
+  const on = goals.filter((x) => x === 'onTrack' || x === 'met').length;
+  return (
+    <Section title="Practice & Development" right={<button className="btn sm ghost" onClick={() => nav('development')}>Development →</button>}>
+      <div className="row wrap" style={{ gap: 4 }}>
+        {PRACTICE_ORDER.map((f) => (
+          <button key={f} className={`dev-focus ${dv.practice === f ? 'on' : ''}`} title={`${PRACTICE_INFO[f].label}: ${PRACTICE_INFO[f].desc}`} onClick={() => mutate((gg) => { gg.development!.practice = f; })}>
+            <span>{PRACTICE_INFO[f].icon}</span>{dv.practice === f && <span className="lbl">{PRACTICE_INFO[f].label}</span>}
+          </button>
+        ))}
+      </div>
+      <div className="row tiny muted" style={{ marginTop: 10 }}>
+        <span>Player goals on track: <b style={{ color: 'var(--text)' }}>{on}/{goals.length}</b></span>
+        <div className="spacer" />
+        <span>{dv.spotlight.length ? `⭐ ${dv.spotlight.length} spotlight` : 'No spotlight players yet'}</span>
+      </div>
+    </Section>
+  );
+}
 
 export function Dashboard() {
   const g = useGameState();
@@ -140,6 +166,8 @@ export function Dashboard() {
               </div>
             </Section>
           )}
+
+          {IN_SEASON_PHASES.includes(g.phase) && g.development && <PracticeCard g={g} />}
 
           <Section title="NIL & Rev-Share" right={<button className="btn sm ghost" onClick={() => nav('nil')}>NIL office →</button>}>
             <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>

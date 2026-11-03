@@ -17,6 +17,7 @@ import { milesBetween } from '../data/places';
 import { staffEffects, maybePoachStaff, finalizePoaching, staffSeasonEnd, staffNewSeason, staffFollowCoach } from './staff';
 import { openScheduling, lockScheduling, applyScheduleEffects } from './scheduling';
 import { openPortal, advancePortalDay } from './portal';
+import { beginSummer, summerDone, runSummer, evaluateGoals, devNewSeason } from './development';
 
 const NCAA_BONUS: Record<string, number> = { Champion: 30, 'Runner-up': 22, 'Final Four': 18, 'Elite Eight': 12, 'Sweet 16': 8, 'Round of 32': 4, 'Round of 64': 1, 'First Four': 0.5 };
 
@@ -157,6 +158,7 @@ export function beginSeasonEnd(state: GameState) {
   }
   state.offseason = { graduating: [], declared: [], progression: {}, signed: [], carousel, summary, achieved, securityDelta: secDelta };
   staffSeasonEnd(state);
+  evaluateGoals(state, achieved);
   pressSeasonEnd(state, achieved);
   state.user.press = fired ? null : seasonEndPresser(state, summary);
   for (const a of awards.filter((x) => x.name === 'National Player of the Year' || x.name === 'Coach of the Year' || x.name.startsWith('All-American First'))) {
@@ -484,6 +486,7 @@ export function newSeason(state: GameState) {
   seedUserBoard(state);
   const ranks = runPoll(state, 'Preseason AP Poll');
   setExpectations(state);
+  devNewSeason(state);
   state.user.hoursMax = hoursForWeek(state);
   state.user.hours = state.user.hoursMax;
   state.user.press = mediaDayPresser(state);
@@ -508,8 +511,8 @@ export function advanceOffseason(state: GameState) {
     case 'declarations': openPortal(state); break;
     case 'portal': if (advancePortalDay(state) === 'closed') doSigning(state); break;
     case 'signing': doDraft(state); break;
-    case 'draft': doProgression(state); break;
-    case 'progression': openScheduling(state); break;
+    case 'draft': beginSummer(state); break;
+    case 'progression': if (!summerDone(state)) runSummer(state); else openScheduling(state); break;
     case 'scheduling': lockScheduling(state); newSeason(state); break;
     default: break;
   }

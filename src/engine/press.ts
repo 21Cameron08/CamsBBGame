@@ -12,6 +12,7 @@ import { confStandings, selectionScore, REGIONS, type FieldEntry } from './ranki
 import { draftScore, fmtMoney } from './player';
 import { seasonLabel } from './calendar';
 import { classRankings } from './recruiting';
+import { FOCUS_INFO } from './development';
 
 type Tone = PressQuestion['answers'][number]['tone'];
 type Answer = PressQuestion['answers'][number];
@@ -499,6 +500,25 @@ export function mediaDayPresser(state: GameState): PressConference {
         A('joke', `He's ready. His jump shot's ready. His dorm room? Not so much.`, [{ kind: 'mediaRep', delta: 3 }, { kind: 'morale', target: fresh.id, delta: 3 }]),
       ]),
     });
+  }
+
+  // ---- the summer in the gym ----
+  const summer = state.development?.summer;
+  if (summer?.done && summer.season === state.season - 1) {
+    const leap = summer.rows.find((r) => (r.tag === 'breakout' || r.archetypeTo) && state.players[r.id]?.teamId === team.id);
+    if (leap) {
+      const lp = state.players[leap.id];
+      cands.push({
+        key: leap.archetypeTo ? 'md.newRole' : 'md.leap', topic: 'leap', w: 8,
+        build: () => makeQ(team, { role: 'beat', tag: 'Offseason' }, leap.archetypeTo
+          ? `${leap.name} spent the summer on ${FOCUS_INFO[leap.focus].label.toLowerCase()} and came back as a ${leap.archetypeTo.toLowerCase()}. What did you see from him?`
+          : `${leap.name} went from ${leap.before} to ${leap.after} overall this summer. What changed?`, [
+          A('praise', `He lived in the gym. First one in, last one out, all summer long. He earned every bit of it.`, [{ kind: 'morale', target: lp.id, delta: 6 }, { kind: 'followers', target: lp.id, delta: 6000 }]),
+          A('confident', `Wait until you see him in a real game. People aren't ready.`, [{ kind: 'hype', delta: 5 }, { kind: 'morale', target: lp.id, delta: 3 }]),
+          A('humble', `Credit our player development staff. They had a plan for him, and he bought in.`, [{ kind: 'mediaRep', delta: 3 }, { kind: 'recruitInterest', delta: 2 }]),
+        ]),
+      });
+    }
   }
 
   // ---- the coach and the program ----
@@ -1346,6 +1366,19 @@ export function seasonEndPresser(state: GameState, summary: string): PressConfer
       A('praise', `How they showed up every single day. They set the standard for everyone after them.`, [{ kind: 'morale', target: 'team', delta: 4 }, { kind: 'recruitInterest', delta: 1 }]),
       A('humble', `That's the hardest part of this job. Saying goodbye.`, [{ kind: 'mediaRep', delta: 3 }]),
     ]) });
+  }
+
+  // ---- players who didn't get what they came for ----
+  const dvg = state.development;
+  if (dvg && dvg.goalsSeason === state.season) {
+    const unhappy = c.players.filter((p) => p.elig > 1 && dvg.goals[p.id]?.result === 'missed' && (dvg.goals[p.id].kind === 'minutes' || dvg.goals[p.id].kind === 'starter')).sort((a, b) => b.ovr - a.ovr)[0];
+    if (unhappy) {
+      cands.push({ key: 'se.unhappy', topic: 'portalRisk', w: 6, build: () => makeQ(team, { role: 'national' }, `${nm(unhappy)} wanted a bigger role this year and didn't get it. Are you worried he'll enter the portal?`, [
+        A('humble', `I'll sit down with him this week. He's earned an honest conversation about next year.`, [{ kind: 'morale', target: unhappy.id, delta: 6 }, { kind: 'mediaRep', delta: 2 }]),
+        A('confident', `His role grows next season. He knows that, and so does everybody in our building.`, [{ kind: 'morale', target: unhappy.id, delta: 4 }, { kind: 'morale', target: 'team', delta: -1 }]),
+        A('deflect', `Every player has to earn his minutes. That's how it works here.`, [{ kind: 'morale', target: unhappy.id, delta: -4 }, { kind: 'morale', target: 'team', delta: 1 }]),
+      ]) });
+    }
   }
 
   // ---- the coach's future ----

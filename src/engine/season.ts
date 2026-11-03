@@ -11,6 +11,7 @@ import { aiRecruitingWeek, decideRecruits, refreshRecruitInterest } from './recr
 import { maybeWeeklyEvent } from './events';
 import { gainXp, hoursForWeek, applyEffects } from './coach';
 import { postgamePresser, recordClaim, selectionPresser } from './press';
+import { weeklyPractice, practiceMods } from './development';
 import { randomInjury } from './player';
 import { RIVALRIES } from '../data/rivalries';
 import { beginSeasonEnd } from './offseason';
@@ -73,7 +74,7 @@ export function applyGameResult(state: GameState, g: ScheduledGame, box: BoxScor
 
   // player stats, morale, injuries
   let potg: { id: string; s: number } | null = null;
-  const userInjuryMul = state.staff ? staffEffects(state).injury : 1;
+  const userInjuryMul = (state.staff ? staffEffects(state).injury : 1) * practiceMods(state).injury;
   box.players.forEach((side, i) => {
     const team = i === 0 ? home : away;
     const won = i === 0 ? homeWon : !homeWon;
@@ -229,6 +230,8 @@ export function weeklyTick(state: GameState, week: number) {
     const ranks = runPoll(state, label);
     pollNews(state, label, ranks);
   }
+  // last week's practice
+  weeklyPractice(state);
   // recruiting: decisions use the board exactly as the user left it this week,
   // then rivals put in next week's work and the board refreshes.
   const commits = decideRecruits(state, week);

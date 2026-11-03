@@ -14,6 +14,7 @@ import { generateClass, seedInterest, seedUserBoard } from './recruiting';
 import { computeRatings, runPoll } from './rankings';
 import { addNews, addSocial } from './media';
 import { introPresser } from './press';
+import { ensureDevelopment } from './development';
 import { welcomeInbox } from './events';
 import { initStaff, staffWelcomeInbox } from './staff';
 
@@ -164,6 +165,7 @@ export function createWorld(opts: NewGameOptions): GameState {
   addSocial(state, { handle: 'MarcusBellHoops', name: 'Marcus Bell', verified: true, kind: 'insider', text: `Sources: ${uteam.school} is finalizing a ${ucoach.contractYears}-year deal with ${ucoach.first} ${ucoach.last}. Intriguing hire.`, teamId: uteam.id });
   staffWelcomeInbox(state);
   welcomeInbox(state);
+  ensureDevelopment(state);
   state.user.press = introPresser(state);
   state.rngState = rng.state;
   return state;

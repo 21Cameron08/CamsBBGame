@@ -19,6 +19,15 @@ for (const pos of Object.keys(W) as Pos[]) {
   WN[pos] = entries.map(([k, v]) => [k, v / sum]);
 }
 
+/** How much a rating counts toward a position's overall (normalized weight) */
+export function ratingWeight(pos: Pos, k: RatingKey): number {
+  return WN[pos].find((x) => x[0] === k)?.[1] ?? 0.02;
+}
+/** The ratings that matter most at a position */
+export function topRatings(pos: Pos, n = 3): RatingKey[] {
+  return [...WN[pos]].sort((a, b) => b[1] - a[1]).slice(0, n).map((x) => x[0]);
+}
+
 export function calcOvr(r: Ratings, pos: Pos): number {
   let wavg = 0;
   const vals: number[] = [];

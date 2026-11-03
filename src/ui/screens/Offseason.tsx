@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { AnimatePresence, motion, animate } from 'framer-motion';
+import { useMemo, useState, type ReactNode } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useGame, useGameState } from '../../store/gameStore';
 import { PlayerFace, CoachFace, TeamLogo, TeamName, Ovr, Stars, Section, Empty, Gauge, useSorted, fmtMoneyShort, TeamHeroBg, Confetti } from '../components/common';
 import { nilAvailable, playerValue } from '../../engine/nil';
@@ -11,6 +11,7 @@ import type { GameState, Player, PortalOffer } from '../../engine/types';
 import { sfx } from '../sound';
 import { SchedulingOffice } from './Scheduling';
 import { PortalHub, PortalReportCard } from './Portal';
+import { SummerDevelopment } from './Development';
 
 const PHASE_TITLES: Partial<Record<GameState['phase'], [string, string]>> = {
   seasonEnd: ['Season Review', 'Awards, evaluations and the coaching carousel'],
@@ -18,7 +19,7 @@ const PHASE_TITLES: Partial<Record<GameState['phase'], [string, string]>> = {
   portal: ['Transfer Portal', 'Six days. Hundreds of players. Every school in the country chasing the same guys.'],
   signing: ['Signing Day', 'Your incoming class arrives on campus'],
   draft: ['NBA Draft', 'Two rounds. Sixty dreams.'],
-  progression: ['Summer Development', 'Who put in the work?'],
+  progression: ['Summer Development', 'Set the plans. Run the workouts. See who made the leap.'],
   scheduling: ['Scheduling Office', 'Book next season’s non-conference slate'],
 };
 
@@ -41,7 +42,7 @@ export function OffseasonScreen() {
       {g.phase === 'portal' && <PortalHub />}
       {g.phase === 'signing' && <Signing />}
       {g.phase === 'draft' && <Draft />}
-      {g.phase === 'progression' && <Progression />}
+      {g.phase === 'progression' && <SummerDevelopment />}
       {g.phase === 'scheduling' && <SchedulingOffice />}
       {!title && <InSeasonPreview />}
     </div>
@@ -65,17 +66,6 @@ function PhaseSteps({ phase }: { phase: GameState['phase'] }) {
   );
 }
 
-function CountUp({ from, to, delay = 0 }: { from: number; to: number; delay?: number }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.textContent = String(from);
-    const c = animate(from, to, { duration: 1.2, delay, ease: [0.2, 0.8, 0.2, 1], onUpdate: (v) => { el.textContent = String(Math.round(v)); } });
-    return () => c.stop();
-  }, [from, to, delay]);
-  return <span ref={ref}>{from}</span>;
-}
 
 // ---------------- In-season preview ----------------
 function InSeasonPreview() {
@@ -445,46 +435,3 @@ function Draft() {
   );
 }
 
-// ---------------- Progression ----------------
-function Progression() {
-  const g = useGameState();
-  const open = useGame((s) => s.open);
-  const team = g.teams[g.user.teamId];
-  const prog = g.offseason?.progression ?? {};
-  const rows = teamPlayers(g, team.id).map((p) => ({ p, d: prog[p.id] ?? 0 })).sort((a, b) => b.d - a.d);
-  const total = rows.reduce((s, r) => s + r.d, 0);
-  const best = rows[0];
-  return (
-    <div className="col" style={{ gap: 16 }}>
-      <div className="grid g4">
-        <div className="stat-tile"><div className="l">Team OVR Gain</div><div className={`v ${total >= 0 ? 'good' : 'bad'}`}>{total >= 0 ? '+' : ''}{total}</div></div>
-        <div className="stat-tile"><div className="l">Biggest Jump</div><div className="v" style={{ fontSize: 20 }}>{best && best.d > 0 ? `${best.p.last} +${best.d}` : '—'}</div></div>
-        <div className="stat-tile"><div className="l">Roster</div><div className="v">{rows.length}</div></div>
-        <div className="stat-tile"><div className="l">Dev Skill</div><div className="v">{g.coaches[g.user.coachId]?.skills.development ?? 0}/10</div></div>
-      </div>
-      <Section title="Development Report">
-        <div className="table-wrap">
-          <table className="table">
-            <thead><tr><th></th><th>Player</th><th>Pos</th><th>Class</th><th className="c">OVR</th><th className="c">Change</th><th className="c">POT</th></tr></thead>
-            <tbody>
-              {rows.map(({ p, d }, i) => (
-                <tr key={p.id} className="click row-in" style={{ animationDelay: `${Math.min(i * 60, 900)}ms` }} onClick={() => open({ kind: 'player', id: p.id })}>
-                  <td style={{ width: 44 }}><PlayerFace p={p} size={34} team={team} /></td>
-                  <td className="b">{p.first} {p.last}{p.career.length === 0 && <span className="pill blue" style={{ marginLeft: 6, fontSize: 9 }}>NEW</span>}</td>
-                  <td>{p.pos}</td>
-                  <td>{p.cls}</td>
-                  <td className="c"><span className="num" style={{ fontSize: 20 }}><CountUp from={p.ovr - d} to={p.ovr} delay={0.3 + i * 0.06} /></span></td>
-                  <td className="c">
-                    <motion.span initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 1.2 + i * 0.06, type: 'spring', stiffness: 400 }}
-                      className={`pill ${d > 0 ? 'good' : d < 0 ? 'bad' : ''}`} style={{ fontSize: 12 }}>{d > 0 ? `▲ +${d}` : d < 0 ? `▼ ${d}` : '—'}</motion.span>
-                  </td>
-                  <td className="c muted num">{p.pot}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Section>
-    </div>
-  );
-}

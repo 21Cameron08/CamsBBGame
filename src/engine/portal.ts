@@ -3,6 +3,7 @@
 import { rng, clamp } from './rng';
 import type { GameState, Player, PortalEntry, PortalFeedItem, PortalOffer, PortalPriorities, PortalReason, PortalState, RetentionMeeting, Team } from './types';
 import { teamPlayers, ROSTER_MAX } from './team';
+import { goalResult } from './development';
 import { playerValue, nilSatisfaction, committedNil, committedRecruitNil } from './nil';
 import { roundMoney, fmtMoney } from './player';
 import { addNews, INSIDERS } from './media';
@@ -171,6 +172,12 @@ export function openPortal(state: GameState) {
     if (team.coachChange) pr += 0.18;
     if (p.ovr >= 68 && team.prestige < 45) pr += 0.28;
     else if (p.ovr >= 74 && team.prestige < 65) pr += 0.16;
+    if (isUser(state, team.id)) {
+      // players who reached their personal goals stay; those who didn't look around
+      const gr = goalResult(state, p.id);
+      if (gr === 'met') pr *= 0.6;
+      else if (gr === 'missed') pr += 0.08;
+    }
     if (p.traits.includes('loyal')) pr *= 0.3;
     if (p.traits.includes('mercenary')) pr *= 1.35;
     if (p.traits.includes('hometown')) pr *= 0.8;

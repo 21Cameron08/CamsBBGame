@@ -16,6 +16,7 @@ import { nilAvailable } from '../../engine/nil';
 import { ratingColor, teamAccent } from '../color';
 import { OFF_STYLES, DEF_STYLES } from '../screens/Roster';
 import { statusOf, recruitActWithOdds, OddsRow, OutlookWarnings, YourOdds } from '../screens/Recruiting';
+import { FOCUS_INFO, GOAL_ICON, goalStatus, planOf } from '../../engine/development';
 import { sfx } from '../sound';
 
 export function ModalHost() {
@@ -45,6 +46,24 @@ const GROUPS: { label: string; keys: RatingKey[] }[] = [
 ];
 
 // ================= Player =================
+function DevPills({ g, p }: { g: GameState; p: Player }) {
+  const dv = g.development;
+  if (!dv) return null;
+  const focus = planOf(g, p.id);
+  const goal = dv.goalsSeason === g.season ? dv.goals[p.id] : undefined;
+  const gs = goal ? goalStatus(g, p, goal) : null;
+  const gains = dv.seasonGains[p.id];
+  const n = gains ? Object.values(gains).reduce((a, b) => a + (b ?? 0), 0) : 0;
+  return (
+    <div className="row wrap gap-s" style={{ marginTop: 8 }}>
+      <span className="pill accent" style={{ cursor: 'pointer' }} onClick={() => { useGame.getState().close(); useGame.getState().nav('development'); }}>{FOCUS_INFO[focus].icon} Plan: {FOCUS_INFO[focus].label}</span>
+      {dv.spotlight.includes(p.id) && <span className="pill gold">⭐ Spotlight</span>}
+      {goal && gs && <span className={`pill ${gs.status === 'onTrack' || gs.status === 'met' ? 'good' : gs.status === 'pending' ? '' : 'bad'}`} title={gs.text}>{GOAL_ICON[goal.kind]} Goal: {goal.label}</span>}
+      {n > 0 && <span className="pill good">📈 +{n} rating pts this season</span>}
+    </div>
+  );
+}
+
 function PlayerModal({ id }: { id: string }) {
   const g = useGameState();
   const p = g.players[id];
@@ -72,6 +91,7 @@ function PlayerModal({ id }: { id: string }) {
               {p.redshirting && <span className="pill blue">Redshirting</span>}
               {p.promise && <span className="pill gold">Promised: {p.promise}</span>}
             </div>
+            {isMine && <DevPills g={g} p={p} />}
             <div className="row wrap gap-s" style={{ marginTop: 8 }}>
               {p.traits.map((t) => <span key={t} className={`pill ${TRAIT_INFO[t].good === true ? 'good' : TRAIT_INFO[t].good === false ? 'bad' : ''}`} title={TRAIT_INFO[t].desc}>{TRAIT_INFO[t].icon} {TRAIT_INFO[t].label}</span>)}
             </div>

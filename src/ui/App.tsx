@@ -22,6 +22,7 @@ import { OffseasonScreen } from './screens/Offseason';
 import { SettingsScreen } from './screens/Settings';
 import { HistoryScreen } from './screens/History';
 import { StaffScreen } from './screens/Staff';
+import { DevelopmentScreen } from './screens/Development';
 import { ModalHost } from './overlays/ModalHost';
 import { LiveGame } from './overlays/LiveGame';
 import { PressConferenceView } from './overlays/PressConference';
@@ -46,6 +47,7 @@ const SCREENS: Record<Screen, React.FC> = {
   offseason: OffseasonScreen,
   settings: SettingsScreen,
   history: HistoryScreen,
+  development: DevelopmentScreen,
 };
 
 export default function App() {

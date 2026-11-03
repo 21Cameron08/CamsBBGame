@@ -117,7 +117,41 @@ Production build: `npm run build`, then `npm run preview` (or host the `dist/` f
   - **Decision Day reveals** flip over your wins and losses each night, and every program gets **portal grades** when the window closes.
   - The **Staff auto-recruit** toggle lets your assistants work the portal for you.
 - **NBA Draft.** Early-entry decisions, then two rounds of picks. Producing pros boosts your program.
-- **Player development** each summer depends on potential, age, minutes, coaching skill and traits such as Gym Rat or Raw.
+
+### 🏋️ Player development
+- **A development plan for every player.** Pick one of seven focuses:
+  - Balanced
+  - Shooting
+  - Attack the Rim
+  - Playmaking
+  - Lockdown D
+  - Protect the Paint
+  - Weight Room
+- Each plan steers growth toward three ratings, and weak ratings grow fastest. You see the projected summer gain for the plan (e.g. "3PT +7 · MID +5 · FT +6 · OVR +3"), plus your staff's pick.
+- **Spotlight** up to three players for 30% more growth.
+- If you have a Player Development coach on staff, they draft plans for new arrivals.
+- **Weekly practice plan** during the season, each with a trade-off:
+  - **Standard:** no edge, no cost.
+  - **Skill Development:** in-season growth along each player's plan, but less game prep.
+  - **Game Prep:** a tactics bonus in that week's games.
+  - **Conditioning:** lasting stamina, but a higher injury risk.
+  - **Recovery:** injuries heal faster and morale lifts.
+  - **Compete Week:** fast growth, but morale and injury costs.
+- **Player goals.** Every rotation player wants something:
+  - minutes
+  - a starting job he was promised
+  - points
+  - a tournament run before he graduates
+  - a better NBA draft projection
+- You can track each goal's progress live. At season's end, players who hit their goals are happier and far less likely to transfer. Those who missed are more likely to look around.
+- **Summer Development** is its own offseason step: set plans and spotlights, run the workouts, then watch the reveal:
+  - each player's overall counting up
+  - his focus ratings before and after
+  - 🚀 breakouts and ⏸ stalls
+  - NBA draft stock moving
+  - players who grow into a new role, like a center who comes back a Stretch Big
+- Breakouts make the news and come up at Media Day.
+- AI programs develop the classic way, based on potential, age, minutes, coaching skill and traits such as Gym Rat or Raw.
 
 ### 📺 Immersion
 - **Press conferences**:
@@ -192,7 +226,8 @@ src/
     postseason.ts  conference tournaments + 68-team bracket
     recruiting.ts  class generation, interest model, honest commit odds, decisions & reasons, AI recruiting, user actions
     nil.ts         NIL budgets, valuations, deals
-    offseason.ts   awards, carousel, declarations, signing day, draft, development
+    offseason.ts   awards, carousel, declarations, signing day, draft
+    development.ts player development: plans, spotlight, weekly practice, goals, summer workouts
     portal.ts      transfer portal: retention, entry waves, odds, bidding wars, calls, decisions, grades
     press.ts       press conferences: question pools, reporters, media memory and follow-ups
     events.ts / media.ts   story events, news & social

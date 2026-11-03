@@ -4,6 +4,7 @@ import { teamOvr } from './player';
 import type { SimTeamSetup } from './sim';
 import type { ConferenceDef } from '../data/types';
 import { staffEffects } from './staff';
+import { practiceMods } from './development';
 
 export const ROSTER_MAX = 15;
 export const ROSTER_MIN = 12;
@@ -92,9 +93,11 @@ export function simSetup(state: GameState, team: Team): SimTeamSetup {
     coachTactics: coach ? coach.skills.tactics : 5,
     coachMotivation: coach ? coach.skills.motivation : 5,
   };
-  if (team.id !== state.user.teamId || !state.staff) return base;
+  if (team.id !== state.user.teamId) return base;
+  const pm = practiceMods(state);
+  if (!state.staff) return { ...base, coachTactics: base.coachTactics + pm.tactics, staminaMul: pm.stamina };
   const e = staffEffects(state);
-  return { ...base, coachTactics: base.coachTactics + e.tactics, coachMotivation: base.coachMotivation + e.motivation, defBonus: e.defense, pressure: e.pressure, staminaMul: e.stamina };
+  return { ...base, coachTactics: base.coachTactics + e.tactics + pm.tactics, coachMotivation: base.coachMotivation + e.motivation, defBonus: e.defense, pressure: e.pressure, staminaMul: e.stamina * pm.stamina };
 }
 
 export function winPct(r: TeamRecord): number {
