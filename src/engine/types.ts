@@ -477,8 +477,20 @@ export interface BracketGame {
   /** First Four: which [round-1 slot, side] the winner feeds */
   feed?: [number, number];
 }
+/** What the Selection Sunday show reveals */
+export interface SelectionShowData {
+  /** the four No. 1 seeds, overall No. 1 first */
+  overall: string[];
+  /** automatic bids (conference champions) */
+  auto: string[];
+  lastIn: string[];
+  firstOut: string[];
+  nextOut: string[];
+}
 export interface TourneyBracket {
   name: string;
+  /** Selection Sunday reveal data (NCAA bracket only) */
+  show?: SelectionShowData;
   confId?: string;
   rounds: BracketGame[][];
   champion: string | null;
@@ -634,7 +646,8 @@ export type Moment =
   | { kind: 'levelUp'; level: number }
   | { kind: 'fired' }
   | { kind: 'award'; label: string; personId: string }
-  | { kind: 'portalDay'; day: number; results: { playerId: string; teamId: string; won: boolean }[] };
+  | { kind: 'portalDay'; day: number; results: { playerId: string; teamId: string; won: boolean }[] }
+  | { kind: 'selection'; season: number; press?: PressConference | null };
 
 export interface GameState {
   version: number;

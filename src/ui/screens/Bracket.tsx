@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { replaySelectionShow } from '../shell/advance';
 import { motion } from 'framer-motion';
 import { useGame, useGameState } from '../../store/gameStore';
 import { TeamLogo, Tabs, Section, Empty, Confetti } from '../components/common';
@@ -101,6 +102,7 @@ export function BracketScreen() {
           <h1 className="h1">Brackets</h1>
         </div>
         <div className="spacer" />
+        {g.ncaa && <button className="btn sm" onClick={replaySelectionShow} title="Watch the Selection Sunday reveal again">▶ Selection Show</button>}
         <Tabs id="brk-tabs" value={tab} onChange={setTab} tabs={[{ id: 'ncaa', label: 'NCAA Tournament' }, { id: 'conf', label: 'Conference Tournaments' }]} />
       </div>
       {tab === 'ncaa' ? <NcaaBracket g={g} /> : <ConfBrackets g={g} />}

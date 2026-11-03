@@ -188,6 +188,14 @@ Production build: `npm run build`, then `npm run preview` (or host the `dist/` f
 - **Polls and postseason**:
   - AP Top 25 voting with momentum, NET-style ratings, Wins Above Bubble, and weekly **Bracketology**
   - all 32 conference tournaments, Selection Sunday with S-curve seeding and the First Four, and a full bracket view
+- **The Selection Sunday Show**, an animated TV-style bracket reveal:
+  - a cold open with the studio crew, then the four No. 1 seeds flipping in
+  - each region revealed matchup by matchup, with your region saved for last
+  - a "Waiting on…" ticker that builds suspense until your name is called, then confetti and your first opponent
+  - the First Four, Last Four In and First Four Out, and heartbreak if you just miss
+  - a result card with your seed, first opponent, likely second-round matchup, the No. 1 seeds and the conferences with the most bids
+  - **1×, 2× and 4× speed**, pause (Space), next (→) and **skip** (Esc), plus a **replay** button on the Bracket page
+  - your Selection Sunday press conference follows the show
 - **Awards**: National POY, All-American teams, Freshman of the Year, DPOY, Coach of the Year, conference POYs, Final Four MOP.
 - **Program history**: championship banners, a season-by-season table, a trophy case, award winners and draft picks.
 - **Atmosphere**:

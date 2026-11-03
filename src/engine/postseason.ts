@@ -1,6 +1,6 @@
 import { rng } from './rng';
-import type { BracketGame, GameState, ScheduledGame, TourneyBracket } from './types';
-import { confStandings, selectField, REGIONS, type FieldEntry } from './rankings';
+import type { BracketGame, GameState, ScheduledGame, SelectionShowData, TourneyBracket } from './types';
+import { confStandings, selectField, selectionScore, REGIONS, type FieldEntry } from './rankings';
 import { CT_FIRST, CT_LAST, NCAA_FIRST, NCAA_ROUND_NAMES } from './calendar';
 import { pickTV } from './schedule';
 
@@ -180,6 +180,14 @@ export function buildNcaa(state: GameState): FieldEntry[] {
   }
   const dayForRound = NCAA_ROUND_NAMES.map((_, i) => NCAA_FIRST + i);
   state.ncaa = { name: 'NCAA Tournament', rounds, champion: null, seeds, regions: REGIONS, dayForRound, roundNames: NCAA_ROUND_NAMES };
+  const outside = Object.values(state.teams).filter((t) => seeds[t.id] == null).sort((a, b) => selectionScore(b) - selectionScore(a));
+  state.ncaa.show = {
+    overall: field.filter((e) => e.seed === 1).sort((a, b) => b.score - a.score).map((e) => e.teamId),
+    auto: field.filter((e) => e.auto).map((e) => e.teamId),
+    lastIn: field.filter((e) => e.firstFour && !e.auto).sort((a, b) => b.score - a.score).map((e) => e.teamId),
+    firstOut: outside.slice(0, 4).map((t) => t.id),
+    nextOut: outside.slice(4, 8).map((t) => t.id),
+  };
   scheduleReady(state, state.ncaa, 'NCAA Tournament', 'ncaa');
   return field;
 }
@@ -198,4 +206,22 @@ export function ncaaResult(state: GameState, teamId: string): string {
   if (last < 0) return '';
   // if lost in round `last`
   return NCAA_EXIT_LABEL[last] ?? '';
+}
+
+/** Selection Sunday reveal data; rebuilt for brackets made before the show existed */
+export function selectionShowData(state: GameState): SelectionShowData | null {
+  const b = state.ncaa;
+  if (!b) return null;
+  if (b.show) return b.show;
+  const autos = new Set(Object.values(state.confTourneys).map((t) => t.champion).filter((x): x is string => !!x));
+  const inField = Object.keys(b.seeds);
+  const outside = Object.values(state.teams).filter((t) => b.seeds[t.id] == null).sort((a, c) => selectionScore(c) - selectionScore(a));
+  const ffTeams = b.rounds[0].flatMap((g) => g.teams).filter((x): x is string => !!x);
+  return {
+    overall: inField.filter((id) => b.seeds[id] === 1).sort((a, c) => selectionScore(state.teams[c]) - selectionScore(state.teams[a])),
+    auto: inField.filter((id) => autos.has(id)),
+    lastIn: ffTeams.filter((id) => !autos.has(id)),
+    firstOut: outside.slice(0, 4).map((t) => t.id),
+    nextOut: outside.slice(4, 8).map((t) => t.id),
+  };
 }

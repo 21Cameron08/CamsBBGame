@@ -283,8 +283,8 @@ export function nextDay(state: GameState) {
     const field = buildNcaa(state);
     const user = field.find((e) => e.teamId === state.user.teamId);
     const ones = field.filter((e) => e.seed === 1).map((e) => state.teams[e.teamId].school);
-    const sp = selectionPresser(state, field);
-    if (sp) state.user.press = sp;
+    // the Selection Sunday show plays first; its presser follows when the show ends
+    state.user.moments.push({ kind: 'selection', season: state.season, press: selectionPresser(state, field) });
     addNews(state, { kind: 'bracket', headline: `The field of 68 is set — ${ones.join(', ')} earn No. 1 seeds`, body: `Selection Sunday delivered drama as the committee revealed the bracket. ${user ? `${state.teams[state.user.teamId].school} is in as a No. ${user.seed} seed in the ${['East', 'West', 'South', 'Midwest'][user.region]} Region.` : `${state.teams[state.user.teamId].school} was left out of the field.`}`, teams: field.slice(0, 4).map((e) => e.teamId), important: true });
   }
   if (week > prevWeek) weeklyTick(state, week);

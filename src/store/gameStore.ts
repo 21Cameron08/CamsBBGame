@@ -283,7 +283,11 @@ export const useGame = create<Store>((set, get) => ({
   },
 
   dismissMoment() {
-    get().mutate((g) => { g.user.moments.shift(); }, { save: false });
+    get().mutate((g) => {
+      const m = g.user.moments.shift();
+      // the Selection Sunday presser waits until the show is over
+      if (m?.kind === 'selection' && m.press && !g.user.press) g.user.press = m.press;
+    }, { save: false });
   },
 }));
 

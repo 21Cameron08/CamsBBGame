@@ -35,7 +35,10 @@ export function advanceActions(g: GameState): { main: AdvanceAction; extra: Adva
       return { main: { label: g.phase === 'regular' ? 'Advance Day' : 'Sim Next Round', sub: g.calendar[g.day]?.label, run: sim('day'), kind: 'primary' }, extra: extras };
     }
     case 'selection':
-      return { main: { label: 'Reveal the Bracket', sub: 'Selection Sunday', run: () => { st.nav('bracket'); void st.advance('day'); }, kind: 'gold' }, extra: [] };
+      return {
+        main: { label: 'Start the Tournament', sub: 'The First Four tips off', run: () => { st.nav('bracket'); void st.advance('day'); }, kind: 'gold' },
+        extra: [{ label: '▶ Replay the Selection Show', run: () => replaySelectionShow() }],
+      };
     case 'seasonEnd':
       return { main: { label: 'Continue: Draft Declarations', sub: 'Season review complete', run: () => void st.continueOffseason(), kind: 'primary' }, extra: [] };
     case 'declarations':
@@ -69,3 +72,11 @@ export const PHASE_LABEL: Record<GameState['phase'], string> = {
   preseason: 'Preseason', regular: 'Regular Season', confTourney: 'Championship Week', selection: 'Selection Sunday', ncaa: 'March Madness',
   seasonEnd: 'Season Review', declarations: 'Draft Declarations', portal: 'Transfer Portal', signing: 'Signing Day', draft: 'NBA Draft', progression: 'Summer Development', scheduling: 'Scheduling Office',
 };
+
+/** Queue the Selection Sunday show again (no presser the second time) */
+export function replaySelectionShow() {
+  useGame.getState().mutate((g) => {
+    if (!g.ncaa || g.user.moments.some((m) => m.kind === 'selection')) return;
+    g.user.moments.unshift({ kind: 'selection', season: g.season, press: null });
+  }, { save: false });
+}
