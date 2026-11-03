@@ -1,6 +1,7 @@
 import type { GameState } from '../../engine/types';
 import { userGameToday, nextUserGame } from '../../engine/season';
 import { seasonLabel } from '../../engine/calendar';
+import { decidingToday } from '../../engine/portal';
 import { useGame } from '../../store/gameStore';
 
 export interface AdvanceAction { label: string; sub?: string; run: () => void; kind?: 'primary' | 'gold' }
@@ -39,8 +40,13 @@ export function advanceActions(g: GameState): { main: AdvanceAction; extra: Adva
     case 'declarations':
       return { main: { label: 'Open the Transfer Portal', sub: 'Retention meetings first', run: () => void st.continueOffseason(), kind: 'primary' }, extra: [] };
     case 'portal': {
-      const r = g.portal?.round ?? 0, m = g.portal?.maxRounds ?? 3;
-      return { main: { label: r === 0 ? 'Start Portal Window' : r < m ? `Portal Window ${r + 1} of ${m}` : 'Close Portal', sub: 'Transfer portal', run: () => void st.continueOffseason(), kind: 'primary' }, extra: [] };
+      const d = g.portal?.day ?? 0, m = g.portal?.maxDays ?? 6;
+      const deciding = decidingToday(g);
+      if (d === 0) {
+        const open = Object.values(g.user.retention).filter((r) => !r.resolved).length;
+        return { main: { label: 'Open the Portal Window', sub: open ? `${open} unresolved meeting${open > 1 ? 's' : ''} decide now` : 'Day 1 of the window', run: () => void st.continueOffseason(), kind: 'gold' }, extra: [] };
+      }
+      return { main: { label: d >= m ? 'Final Decisions · Close Portal' : `End Day ${d} · Go to Day ${d + 1}`, sub: deciding ? `${deciding} of your targets decide tonight` : `Portal window · ${m - d} day${m - d === 1 ? '' : 's'} left`, run: () => void st.continueOffseason(), kind: d >= m ? 'gold' : 'primary' }, extra: [] };
     }
     case 'signing':
       return { main: { label: 'Continue: NBA Draft', sub: 'Signing day complete', run: () => void st.continueOffseason(), kind: 'primary' }, extra: [] };

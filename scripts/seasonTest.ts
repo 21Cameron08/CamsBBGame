@@ -47,7 +47,7 @@ for (const seasonIdx of [0, 1]) {
   while (s.phase !== 'preseason' && g2++ < 20) {
     if (s.phase === 'seasonEnd') console.log(`Carousel: ${s.offseason!.carousel.length} moves; user security ${s.coaches[s.user.coachId].jobSecurity}; offers ${s.user.offers.length}`);
     if (s.phase === 'declarations') console.log(`Graduating ${s.offseason!.graduating.length}, declared ${s.offseason!.declared.length}`);
-    if (s.phase === 'portal' && s.portal!.round === 0) console.log(`Portal pool ${s.portal!.pool.length}, user retention ${Object.keys(s.user.retention).length}`);
+    if (s.phase === 'portal' && s.portal!.day === 0) console.log(`Portal entries ${Object.keys(s.portal!.entries).length}, user retention ${Object.keys(s.user.retention).length}`);
     advanceOffseason(s);
   }
   console.log(`Offseason in ${(performance.now() - t2).toFixed(0)}ms. Draft picks ${s.draft.length}. Players ${Object.keys(s.players).length}. Season now ${s.season}`);

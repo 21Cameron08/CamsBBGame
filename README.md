@@ -97,11 +97,15 @@ Production build: `npm run build`, then `npm run preview` (or host the `dist/` f
   - Make scholarship offers with NIL money and role promises. Break a promise and morale craters.
   - AI programs recruit against you all season.
   - **Commitment ceremonies**: hats on the table, a drumroll, and the reveal.
-- **Transfer portal.**
-  - Players weigh minutes, morale, NIL, coaching changes, and the pull of a bigger stage.
-  - Hold **retention meetings** with your own players before they leave.
-  - Shop the portal over three windows against AI bidding.
-  - A **Staff auto-recruit** toggle lets your assistants handle the grind.
+- **Transfer portal: a live six-day window.**
+  - **Retention meetings first.** Each unhappy player tells you why he's leaving: playing time, NIL money, a bigger stage, a coaching change, or wanting to be closer to home. Pay him, promise a role, or have a heart-to-heart, with the odds of each option shown up front.
+  - **Players enter in waves**, including stars who pull out of the NBA draft mid-week. Each one has portal stars, a big-board rank, his reasons and a decision day.
+  - **Recruit each target**: call him to learn what he wants, do a staff Zoom, bring him in for an official visit, then offer NIL money, a one- or two-year deal and a role promise.
+  - **Honest odds**: the percentage bars are each player's real chances against every rival school, and **Your shot** shows your odds before you even offer.
+  - **Bidding wars**: rival schools raise their offers, and players call you asking you to match.
+  - **The Portal Wire**: a live feed of entries, top-5 lists, visits, insider leaks and commitments.
+  - **Decision Day reveals** flip over your wins and losses each night, and every program gets **portal grades** when the window closes.
+  - The **Staff auto-recruit** toggle lets your assistants work the portal for you.
 - **NBA Draft.** Early-entry decisions, then two rounds of picks. Producing pros boosts your program.
 - **Player development** each summer depends on potential, age, minutes, coaching skill and traits such as Gym Rat or Raw.
 
@@ -162,7 +166,8 @@ src/
     postseason.ts  conference tournaments + 68-team bracket
     recruiting.ts  class generation, interest model, AI recruiting, user actions
     nil.ts         NIL budgets, valuations, deals
-    offseason.ts   awards, carousel, declarations, portal, signing day, draft, development
+    offseason.ts   awards, carousel, declarations, signing day, draft, development
+    portal.ts      transfer portal: retention, entry waves, odds, bidding wars, calls, decisions, grades
     press.ts / events.ts / media.ts   press conferences, story events, news & social
     staff.ts       coaching staff: market, effects, contracts, poaching, coaching tree
     scheduling.ts  Scheduling Office: Feast Week events, booking rules, guarantees, series, résumé meter

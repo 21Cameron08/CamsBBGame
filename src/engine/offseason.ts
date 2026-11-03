@@ -16,6 +16,7 @@ import { NBA_TEAMS } from '../data/names';
 import { milesBetween } from '../data/places';
 import { staffEffects, maybePoachStaff, finalizePoaching, staffSeasonEnd, staffNewSeason, staffFollowCoach } from './staff';
 import { openScheduling, lockScheduling, applyScheduleEffects } from './scheduling';
+import { openPortal, advancePortalDay } from './portal';
 
 const NCAA_BONUS: Record<string, number> = { Champion: 30, 'Runner-up': 22, 'Final Four': 18, 'Elite Eight': 12, 'Sweet 16': 8, 'Round of 32': 4, 'Round of 64': 1, 'First Four': 0.5 };
 
@@ -322,202 +323,7 @@ function removeFromTeam(state: GameState, p: Player, note: string) {
 }
 
 // ---------------- Portal ----------------
-export function openPortal(state: GameState) {
-  state.phase = 'portal';
-  const os = state.offseason!;
-  const leaving = new Set([...os.graduating, ...os.declared]);
-  for (const id of leaving) {
-    const p = state.players[id];
-    if (p && p.teamId) removeFromTeam(state, p, os.graduating.includes(id) ? `Graduated (${seasonLabel(state.season)})` : `Declared for NBA Draft (${state.season + 1})`);
-  }
-  const pool: string[] = [];
-  const from: Record<string, string> = {};
-  const asks: Record<string, number> = {};
-  state.user.retention = {};
-  for (const p of Object.values(state.players)) {
-    if (!p.teamId || p.redshirting && p.cls === 'FR' && false) continue;
-    const team = state.teams[p.teamId];
-    const mpg = p.stats.gp ? p.stats.min / p.stats.gp : 0;
-    const roster = teamPlayers(state, team.id).sort((a, b) => b.ovr - a.ovr);
-    const rank = roster.findIndex((x) => x.id === p.id);
-    let pr = 0.05;
-    if (mpg < 12 && rank < 8) pr += 0.15;
-    if (mpg < 6) pr += 0.14;
-    if (p.morale < 55) pr += (55 - p.morale) / 100 * 0.9;
-    if (nilSatisfaction(state, p) < 0.6) pr += p.traits.includes('mercenary') ? 0.22 : 0.1;
-    if (team.coachChange) pr += 0.18;
-    if (p.ovr >= 68 && team.prestige < 45) pr += 0.28;
-    else if (p.ovr >= 74 && team.prestige < 65) pr += 0.16;
-    if (p.traits.includes('loyal')) pr *= 0.3;
-    if (p.traits.includes('mercenary')) pr *= 1.35;
-    if (p.traits.includes('hometown')) pr *= 0.8;
-    const coach = state.coaches[team.coachId];
-    if (coach) pr *= 1 - coach.skills.portal * 0.03 - coach.skills.motivation * 0.02;
-    pr = clamp(pr, 0, 0.85);
-    if (team.id === state.user.teamId) {
-      if (pr >= 0.2) {
-        const ask = roundMoney(Math.max(playerValue(state, p) * rng.range(1.0, 1.35), (p.nil?.amount ?? 0) * 1.15) * staffEffects(state).retentionMul);
-        state.user.retention[p.id] = { ask, resolved: false };
-        (state.user.retention[p.id] as { ask: number; resolved: boolean; prob?: number }).prob = pr;
-      }
-      continue;
-    }
-    if (rng.chance(pr)) {
-      pool.push(p.id);
-      from[p.id] = team.id;
-      asks[p.id] = roundMoney(playerValue(state, p) * rng.range(0.85, 1.25));
-    }
-  }
-  for (const id of pool) {
-    const p = state.players[id];
-    removeFromTeam(state, p, `Entered transfer portal from ${state.teams[from[id]].school}`);
-    p.inPortal = true;
-  }
-  state.portal = { round: 0, maxRounds: 3, pool, offers: {}, asks, from, log: [] };
-  const stars = pool.map((id) => state.players[id]).sort((a, b) => b.ovr - a.ovr).slice(0, 5);
-  addNews(state, { kind: 'portal', headline: `Transfer portal opens: ${pool.length} players enter on day one`, body: `Headliners include ${stars.map((p) => `${p.first} ${p.last} (${state.teams[from[p.id]].school})`).join(', ')}.`, teams: stars.map((p) => from[p.id]), important: true });
-  for (const p of stars.slice(0, 3)) {
-    const ins = rng.pick(INSIDERS);
-    addSocial(state, { handle: ins.handle, name: ins.name, verified: true, kind: 'insider', text: `NEWS: ${state.teams[from[p.id]].school} ${p.pos} ${p.first} ${p.last} (${p.stats.gp ? (p.stats.pts / p.stats.gp).toFixed(1) : '0'} PPG) is entering the transfer portal. Instant top target.`, personId: p.id });
-  }
-}
-
-/** User handles a retention meeting */
-export function retentionDecision(state: GameState, playerId: string, action: 'pay' | 'promise' | 'release'): string {
-  const r = state.user.retention[playerId] as { ask: number; resolved: boolean; staying?: boolean; prob?: number };
-  const p = state.players[playerId];
-  if (!r || !p) return '';
-  r.resolved = true;
-  if (action === 'pay') {
-    const avail = state.teams[state.user.teamId].nilBudget - teamPlayers(state, state.user.teamId).reduce((s, x) => s + (x.id === p.id ? 0 : x.nil?.amount ?? 0), 0);
-    if (avail < r.ask) { r.resolved = false; return 'Not enough NIL budget to meet his ask.'; }
-    p.nil = { amount: r.ask, years: 2 };
-    p.morale = clamp(p.morale + 15, 0, 100);
-    r.staying = true;
-    return `${p.first} ${p.last} is staying! New deal: ${fmtMoney(r.ask)}/yr.`;
-  }
-  if (action === 'promise') {
-    const ok = rng.chance(clamp(0.75 - (r.prob ?? 0.3) * 0.6, 0.2, 0.85));
-    r.staying = ok;
-    if (ok) { p.promise = 'starter'; p.morale = clamp(p.morale + 8, 0, 100); return `${p.first} bought in. He's staying — with a starting role promised.`; }
-    return `${p.first} wasn't convinced. He's entering the portal.`;
-  }
-  r.staying = false;
-  return `You wished ${p.first} well. He's entering the portal.`;
-}
-
-function finalizeRetention(state: GameState) {
-  const pool = state.portal!;
-  for (const [id, r0] of Object.entries(state.user.retention)) {
-    const r = r0 as { ask: number; resolved: boolean; staying?: boolean; prob?: number };
-    const p = state.players[id];
-    if (!p || !p.teamId) continue;
-    let leaves = r.resolved ? r.staying === false : rng.chance(r.prob ?? 0.3);
-    if (r.resolved && r.staying) leaves = false;
-    if (leaves) {
-      pool.pool.push(id);
-      pool.from[id] = p.teamId;
-      pool.asks[id] = roundMoney(playerValue(state, p) * rng.range(0.9, 1.3));
-      removeFromTeam(state, p, `Entered transfer portal from ${state.teams[p.teamId].school}`);
-      p.inPortal = true;
-      addNews(state, { kind: 'portal', headline: `${p.first} ${p.last} enters the transfer portal`, body: `${p.first} ${p.last} will leave ${state.teams[state.user.teamId].school}.`, teams: [state.user.teamId], important: true, personId: p.id, personKind: 'player' });
-    }
-    r.resolved = true;
-  }
-}
-
-export function portalOffer(state: GameState, playerId: string, nil: number, promise: PortalOffer['promise']): { ok: boolean; msg: string } {
-  const ps = state.portal;
-  if (!ps || !ps.pool.includes(playerId)) return { ok: false, msg: 'Player is not in the portal.' };
-  const list = (ps.offers[playerId] ??= []);
-  const mine = list.find((o) => o.teamId === state.user.teamId);
-  if (mine) { mine.nil = nil; mine.promise = promise; }
-  else list.push({ teamId: state.user.teamId, nil, promise });
-  return { ok: true, msg: 'Offer submitted.' };
-}
-
-function portalScore(state: GameState, p: Player, o: PortalOffer, ask: number): number {
-  const team = state.teams[o.teamId];
-  const roster = teamPlayers(state, team.id);
-  const ahead = roster.filter((x) => x.pos === p.pos && x.ovr >= p.ovr).length;
-  let pt = clamp(100 - ahead * 30, 5, 100);
-  if (o.promise === 'star') pt = 100; else if (o.promise === 'starter') pt = Math.max(pt, 85); else if (o.promise === 'rotation') pt = Math.max(pt, 60);
-  const nil = clamp((o.nil / Math.max(1, ask)) * 80, 0, 130);
-  const fromT = state.teams[p.history.length ? (state.portal?.from[p.id] ?? '') : ''] as Team | undefined;
-  const miles = fromT ? milesBetween(fromT.lat, fromT.lng, team.lat, team.lng) : 800;
-  const coach = state.coaches[team.coachId];
-  const merc = p.traits.includes('mercenary') ? 1.6 : 1;
-  let s = nil * 0.4 * merc + pt * 0.25 + team.prestige * 0.25 + (coach ? coach.skills.portal * 2 : 5) + clamp(30 - miles / 60, 0, 30) * 0.2;
-  s += team.rating * 0.4;
-  if (o.teamId === state.user.teamId) s += (state.coaches[state.user.coachId]?.skills.portal ?? 0) * 1.2 + staffEffects(state).portal;
-  return s + rng.normal(0, 4);
-}
-
-export function portalRound(state: GameState) {
-  const ps = state.portal!;
-  if (ps.round === 0) finalizeRetention(state);
-  ps.round++;
-  // AI offers
-  const pool = ps.pool.map((id) => state.players[id]).filter((p) => p && p.inPortal);
-  const teams = Object.values(state.teams).filter((t) => t.id !== state.user.teamId || state.settings.autoRecruit);
-  for (const t of teams) {
-    const committed = Object.values(state.recruits).filter((r) => r.committed === t.id).length;
-    const open = ROSTER_MAX - t.roster.length - committed;
-    if (open <= 0) continue;
-    const budgetLeft = t.nilBudget - teamPlayers(state, t.id).reduce((s, p) => s + (p.nil?.amount ?? 0), 0);
-    const nOffers = Math.min(open + 1, 4);
-    const lo = t.power - 9, hi = t.power + 5;
-    const cands = pool.filter((p) => p.ovr >= lo && p.ovr <= hi && !(ps.offers[p.id] ?? []).some((o) => o.teamId === t.id));
-    for (let i = 0; i < nOffers && cands.length; i++) {
-      const p = cands.splice(rng.int(0, cands.length - 1), 1)[0];
-      const ask = ps.asks[p.id] ?? 0;
-      const nil = roundMoney(Math.min(ask * rng.range(0.7, 1.2), Math.max(0, budgetLeft) * 0.5));
-      (ps.offers[p.id] ??= []).push({ teamId: t.id, nil, promise: p.ovr > t.power ? 'starter' : null });
-    }
-  }
-  // decisions
-  const decideP = ps.round === 1 ? 0.35 : ps.round === 2 ? 0.6 : 1;
-  for (const p of pool) {
-    const offers = (ps.offers[p.id] ?? []).filter((o) => {
-      const t = state.teams[o.teamId];
-      return t && t.roster.length < ROSTER_MAX;
-    });
-    if (!offers.length) continue;
-    if (!rng.chance(decideP)) continue;
-    const ask = ps.asks[p.id] ?? 0;
-    const scored = offers.map((o) => ({ o, s: portalScore(state, p, o, ask) })).sort((a, b) => b.s - a.s);
-    const best = scored[0].o;
-    const t = state.teams[best.teamId];
-    const fromSchool = state.teams[ps.from[p.id]]?.school ?? 'his previous school';
-    p.teamId = t.id;
-    p.inPortal = false;
-    p.transfers++;
-    p.nil = { amount: best.nil, years: 1 };
-    p.promise = best.promise;
-    p.morale = 75;
-    p.num = 0;
-    p.history.push(`Transferred from ${fromSchool} to ${t.school} (${state.season + 1})`);
-    t.roster.push(p.id);
-    ps.pool = ps.pool.filter((id) => id !== p.id);
-    const line = `${p.first} ${p.last} (${p.ovr} OVR ${p.pos}) → ${t.school}`;
-    ps.log.unshift(line);
-    if (t.id === state.user.teamId || p.ovr >= 72 || ps.from[p.id] === state.user.teamId) {
-      addNews(state, { kind: 'portal', headline: `${p.first} ${p.last} commits to ${t.school} out of the portal`, body: `The ${p.pos} from ${fromSchool} chose ${t.school}${scored.length > 1 ? ` over ${scored.slice(1, 3).map((x) => state.teams[x.o.teamId].school).join(' and ')}` : ''}. NIL deal reportedly worth ${fmtMoney(best.nil)}.`, teams: [t.id], important: t.id === state.user.teamId, personId: p.id, personKind: 'player' });
-    }
-    if (t.id === state.user.teamId) gainXp(state, 15 + Math.max(0, p.ovr - 60));
-  }
-  if (ps.round >= ps.maxRounds) closePortal(state);
-}
-
-function closePortal(state: GameState) {
-  const ps = state.portal!;
-  for (const id of ps.pool) {
-    const p = state.players[id];
-    if (p) { p.inPortal = false; p.history.push('Went unsigned in the portal'); delete state.players[id]; }
-  }
-  ps.pool = [];
-  doSigning(state);
-}
+// The transfer portal lives in ./portal.ts (Portal 2.0: day-by-day window).
 
 // ---------------- Signing ----------------
 export function doSigning(state: GameState) {
@@ -693,7 +499,7 @@ export function advanceOffseason(state: GameState) {
   switch (state.phase) {
     case 'seasonEnd': doDeclarations(state); break;
     case 'declarations': openPortal(state); break;
-    case 'portal': portalRound(state); break;
+    case 'portal': if (advancePortalDay(state) === 'closed') doSigning(state); break;
     case 'signing': doDraft(state); break;
     case 'draft': doProgression(state); break;
     case 'progression': openScheduling(state); break;

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion, animate } from 'framer-motion';
 import { useGame, useGameState } from '../../store/gameStore';
 import { PlayerFace, CoachFace, TeamLogo, TeamName, Ovr, Stars, Section, Empty, Gauge, useSorted, fmtMoneyShort, TeamHeroBg, Confetti } from '../components/common';
-import { retentionDecision, portalOffer } from '../../engine/offseason';
 import { nilAvailable, playerValue } from '../../engine/nil';
 import { draftScore, fmtHeight } from '../../engine/player';
 import { EXPECTATIONS } from '../../engine/coach';
@@ -11,11 +10,12 @@ import { teamPlayers, ROSTER_MAX } from '../../engine/team';
 import type { GameState, Player, PortalOffer } from '../../engine/types';
 import { sfx } from '../sound';
 import { SchedulingOffice } from './Scheduling';
+import { PortalHub, PortalReportCard } from './Portal';
 
 const PHASE_TITLES: Partial<Record<GameState['phase'], [string, string]>> = {
   seasonEnd: ['Season Review', 'Awards, evaluations and the coaching carousel'],
   declarations: ['Draft Declarations', 'Seniors move on. Stars test the waters.'],
-  portal: ['Transfer Portal', 'Retain your guys. Raid everyone else’s.'],
+  portal: ['Transfer Portal', 'Six days. Hundreds of players. Every school in the country chasing the same guys.'],
   signing: ['Signing Day', 'Your incoming class arrives on campus'],
   draft: ['NBA Draft', 'Two rounds. Sixty dreams.'],
   progression: ['Summer Development', 'Who put in the work?'],
@@ -38,7 +38,7 @@ export function OffseasonScreen() {
       </div>
       {g.phase === 'seasonEnd' && <SeasonEnd />}
       {g.phase === 'declarations' && <Declarations />}
-      {g.phase === 'portal' && <Portal />}
+      {g.phase === 'portal' && <PortalHub />}
       {g.phase === 'signing' && <Signing />}
       {g.phase === 'draft' && <Draft />}
       {g.phase === 'progression' && <Progression />}
@@ -338,201 +338,7 @@ function Declarations() {
 }
 
 // ---------------- Portal ----------------
-type RetState = { ask: number; resolved: boolean; staying?: boolean; prob?: number };
-
-function Portal() {
-  const g = useGameState();
-  const mutate = useGame((s) => s.mutate);
-  const toast = useGame((s) => s.toast);
-  const open = useGame((s) => s.open);
-  const ps = g.portal;
-  const uid = g.user.teamId;
-  const team = g.teams[uid];
-  const [pos, setPos] = useState('');
-  const [minOvr, setMinOvr] = useState(0);
-  const [sel, setSel] = useState<string | null>(null);
-  const [nil, setNil] = useState(0);
-  const [promise, setPromise] = useState<PortalOffer['promise']>(null);
-
-  const retention = Object.entries(g.user.retention) as [string, RetState][];
-  const pool = useMemo(() => (ps?.pool ?? []).map((id) => g.players[id]).filter((p) => p && (!pos || p.pos === pos) && p.ovr >= minOvr), [ps?.pool, g.players, pos, minOvr]); // eslint-disable-line react-hooks/exhaustive-deps
-  const myOffers = useMemo(() => Object.entries(ps?.offers ?? {}).flatMap(([pid, list]) => list.filter((o) => o.teamId === uid).map((o) => ({ pid, o }))).filter((x) => ps?.pool.includes(x.pid)), [ps, uid, g.portal?.round]); // eslint-disable-line react-hooks/exhaustive-deps
-  const pendingNil = myOffers.reduce((s, x) => s + (x.pid === sel ? 0 : x.o.nil), 0);
-  const avail = Math.max(0, nilAvailable(g, uid) - pendingNil);
-  const commits = Object.values(g.recruits).filter((r) => r.committed === uid).length;
-  const { sorted, th } = useSorted(pool, { key: 'ovr', dir: -1 }, {
-    ovr: (p) => p.ovr, pot: (p) => p.pot, name: (p) => p.last, pos: (p) => p.pos, ask: (p) => ps?.asks[p.id] ?? 0, offers: (p) => ps?.offers[p.id]?.length ?? 0, cls: (p) => p.cls,
-  });
-  const selP = sel ? g.players[sel] : undefined;
-
-  useEffect(() => {
-    if (!sel || !ps) return;
-    const existing = ps.offers[sel]?.find((o) => o.teamId === uid);
-    setNil(existing?.nil ?? Math.min(ps.asks[sel] ?? 0, Math.max(0, nilAvailable(g, uid) - pendingNil)));
-    setPromise(existing?.promise ?? null);
-  }, [sel]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (!ps) return <Empty>The portal is not open.</Empty>;
-
-  const submit = () => {
-    if (!selP) return;
-    let res = { ok: false, msg: '' };
-    mutate((gg) => { res = portalOffer(gg, selP.id, Math.round(nil), promise); });
-    toast(res.ok ? `Offer sent to ${selP.first} ${selP.last}.` : res.msg, res.ok ? 'good' : 'bad');
-    if (res.ok) sfx.whoosh();
-  };
-
-  return (
-    <div className="col" style={{ gap: 16 }}>
-      <div className="grid g4">
-        <div className="stat-tile"><div className="l">Portal Window</div><div className="v">{ps.round === 0 ? 'Opening' : `${Math.min(ps.round + 1, ps.maxRounds)} / ${ps.maxRounds}`}</div><div className="bar thin mt"><i style={{ width: `${(ps.round / ps.maxRounds) * 100}%` }} /></div></div>
-        <div className="stat-tile"><div className="l">Roster</div><div className="v">{team.roster.length}<span className="muted" style={{ fontSize: 16 }}> / {ROSTER_MAX}</span></div><div className="tiny muted">+{commits} signees incoming</div></div>
-        <div className="stat-tile"><div className="l">NIL Available</div><div className="v">{fmtMoneyShort(nilAvailable(g, uid))}</div><div className="tiny muted">{fmtMoneyShort(pendingNil)} in pending offers</div></div>
-        <div className="stat-tile"><div className="l">In the Portal</div><div className="v">{ps.pool.length}</div><div className="tiny muted">{ps.log.length} committed so far</div></div>
-      </div>
-
-      {retention.length > 0 && (
-        <Section title="Retention Meetings" right={<span className="tiny muted">{ps.round === 0 ? 'Unresolved players decide when the first window opens' : 'Decisions are final'}</span>}>
-          <div className="grid g3">
-            {retention.map(([id, r], i) => {
-              const p = g.players[id];
-              if (!p) return null;
-              const gone = r.resolved && r.staying === false;
-              return (
-                <motion.div key={id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }} className="card" style={{ padding: 14, borderColor: r.resolved ? (r.staying ? 'rgba(34,211,143,.5)' : 'rgba(255,93,93,.4)') : 'color-mix(in srgb, var(--accent) 45%, transparent)' }}>
-                  <div className="row">
-                    <PlayerFace p={p} size={56} team={team} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="b ellipsis link" onClick={() => open({ kind: 'player', id })}>{p.first} {p.last}</div>
-                      <div className="tiny muted">{p.pos} · {p.cls} · Morale {Math.round(p.morale)}</div>
-                      <div className="tiny">Wants <b>{fmtMoneyShort(r.ask)}</b>/yr <span className="muted">(now {fmtMoneyShort(p.nil?.amount ?? 0)})</span></div>
-                    </div>
-                    <Ovr v={p.ovr} />
-                  </div>
-                  {!r.resolved && ps.round === 0 ? (
-                    <div className="row wrap gap-s mt">
-                      <button className="btn sm primary" onClick={() => { let m = ''; mutate((gg) => { m = retentionDecision(gg, id, 'pay'); }); toast(m, m.includes('Not enough') ? 'bad' : 'good'); }}>Pay {fmtMoneyShort(r.ask)}</button>
-                      <button className="btn sm" onClick={() => { let m = ''; mutate((gg) => { m = retentionDecision(gg, id, 'promise'); }); toast(m, m.includes('staying') ? 'good' : 'bad'); }}>Promise starter role</button>
-                      <button className="btn sm ghost" onClick={() => { let m = ''; mutate((gg) => { m = retentionDecision(gg, id, 'release'); }); toast(m); }}>Let him go</button>
-                    </div>
-                  ) : (
-                    <div className={`pill mt ${r.staying ? 'good' : gone ? 'bad' : ''}`}>{r.staying ? '✓ Staying' : gone ? 'Entering portal' : 'Undecided'}</div>
-                  )}
-                </motion.div>
-              );
-            })}
-          </div>
-        </Section>
-      )}
-
-      <div className="grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) 340px', alignItems: 'start' }}>
-        <Section title="Portal Market" right={
-          <div className="row">
-            <select className="select" style={{ width: 110 }} value={pos} onChange={(e) => setPos(e.target.value)}>
-              <option value="">All pos</option>{['PG', 'SG', 'SF', 'PF', 'C'].map((x) => <option key={x}>{x}</option>)}
-            </select>
-            <select className="select" style={{ width: 120 }} value={minOvr} onChange={(e) => setMinOvr(+e.target.value)}>
-              {[0, 55, 60, 65, 70, 75, 80].map((v) => <option key={v} value={v}>{v ? `${v}+ OVR` : 'Any OVR'}</option>)}
-            </select>
-          </div>
-        }>
-          {ps.pool.length === 0 ? <Empty>The portal is empty.</Empty> : (
-            <div className="table-wrap" style={{ maxHeight: 520 }}>
-              <table className="table">
-                <thead><tr><th></th>{th('name', 'Player')}{th('pos', 'Pos')}{th('cls', 'Yr')}{th('ovr', 'OVR', 'c')}{th('pot', 'POT', 'c')}<th>From</th>{th('ask', 'Ask', 'r')}{th('offers', 'Offers', 'c')}</tr></thead>
-                <tbody>
-                  {sorted.slice(0, 150).map((p) => {
-                    const from = g.teams[ps.from[p.id]];
-                    const mine = ps.offers[p.id]?.some((o) => o.teamId === uid);
-                    return (
-                      <tr key={p.id} className={`click ${sel === p.id ? 'me' : ''}`} onClick={() => setSel(p.id)}>
-                        <td style={{ width: 40 }}><PlayerFace p={p} size={30} team={from} /></td>
-                        <td><span className="b">{p.first} {p.last}</span>{mine && <span className="pill accent" style={{ marginLeft: 6, fontSize: 9 }}>OFFERED</span>}</td>
-                        <td>{p.pos}</td>
-                        <td>{p.cls}</td>
-                        <td className="c"><Ovr v={p.ovr} size="sm" /></td>
-                        <td className="c muted num">{p.pot}</td>
-                        <td>{from ? <span className="row" style={{ gap: 6 }}><TeamLogo team={from} size={18} /><span className="small">{from.abbr}</span></span> : '—'}</td>
-                        <td className="r">{fmtMoneyShort(ps.asks[p.id] ?? 0)}</td>
-                        <td className="c">{ps.offers[p.id]?.length ?? 0}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Section>
-
-        <div className="col" style={{ gap: 16, position: 'sticky', top: 0 }}>
-          <>
-            {selP ? (
-              <motion.div key={selP.id} className="card glow" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
-                <div className="row">
-                  <PlayerFace p={selP} size={64} team={g.teams[ps.from[selP.id]]} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="b link ellipsis" onClick={() => open({ kind: 'player', id: selP.id })}>{selP.first} {selP.last}</div>
-                    <div className="tiny muted">{selP.pos} · {selP.cls} · {fmtHeight(selP.height)} · {selP.archetype}</div>
-                    <div className="tiny muted">From <TeamName team={g.teams[ps.from[selP.id]]} showRank={false} /></div>
-                  </div>
-                  <Ovr v={selP.ovr} size="lg" />
-                </div>
-                <div className="kv small mt">
-                  <span>Asking</span><span className="b">{fmtMoneyShort(ps.asks[selP.id] ?? 0)}/yr</span>
-                  <span>Market value</span><span>{fmtMoneyShort(playerValue(g, selP))}</span>
-                  <span>Competing offers</span><span>{(ps.offers[selP.id] ?? []).filter((o) => o.teamId !== uid).length}</span>
-                  {selP.stats.gp > 0 && <><span>Last season</span><span>{(selP.stats.pts / selP.stats.gp).toFixed(1)} ppg · {((selP.stats.orb + selP.stats.drb) / selP.stats.gp).toFixed(1)} rpg</span></>}
-                </div>
-                <div className="divider" />
-                <label className="field">NIL offer: <b style={{ color: 'var(--text)', fontSize: 16 }}>{fmtMoneyShort(nil)}/yr</b>
-                  <input type="range" min={0} max={Math.max(avail, 1000)} step={Math.max(1000, Math.round(avail / 200 / 1000) * 1000)} value={Math.min(nil, avail)} onChange={(e) => setNil(+e.target.value)} />
-                </label>
-                <div className="row tiny muted" style={{ justifyContent: 'space-between' }}><span>$0</span><span>Max {fmtMoneyShort(avail)}</span></div>
-                <label className="field mt">Role promise
-                  <select className="select" value={promise ?? ''} onChange={(e) => setPromise((e.target.value || null) as PortalOffer['promise'])}>
-                    <option value="">No promise</option>
-                    <option value="rotation">Rotation minutes</option>
-                    <option value="starter">Starting role</option>
-                    <option value="star">Featured star</option>
-                  </select>
-                </label>
-                <button className="btn primary block mt" disabled={team.roster.length >= ROSTER_MAX || nil > avail} onClick={submit}>
-                  {ps.offers[selP.id]?.some((o) => o.teamId === uid) ? 'Update Offer' : 'Make Offer'}
-                </button>
-                {team.roster.length >= ROSTER_MAX && <div className="tiny bad" style={{ marginTop: 6 }}>Your roster is full.</div>}
-                <div className="tiny muted" style={{ marginTop: 8 }}>Broken promises tank morale. Players decide over the remaining portal windows.</div>
-              </motion.div>
-            ) : (
-              <motion.div key="none" className="card" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><Empty>Select a player to make an offer.</Empty></motion.div>
-            )}
-          </>
-          <Section title={`Your Offers (${myOffers.length})`}>
-            {myOffers.length === 0 ? <div className="small muted">No active offers.</div> : myOffers.map(({ pid, o }) => {
-              const p = g.players[pid];
-              return p ? (
-                <div key={pid} className="row small" style={{ padding: '5px 0', cursor: 'pointer' }} onClick={() => setSel(pid)}>
-                  <PlayerFace p={p} size={26} team={g.teams[ps.from[pid]]} />
-                  <span className="ellipsis" style={{ flex: 1 }}>{p.first} {p.last}</span>
-                  <span className="b">{fmtMoneyShort(o.nil)}</span>
-                  {o.promise && <span className="pill" style={{ fontSize: 9 }}>{o.promise}</span>}
-                </div>
-              ) : null;
-            })}
-          </Section>
-          <Section title="Portal Wire">
-            {ps.log.length === 0 ? <div className="small muted">No commitments yet.</div> : (
-              <div style={{ maxHeight: 220, overflowY: 'auto' }}>
-                {ps.log.slice(0, 40).map((l, i) => (
-                  <motion.div key={l + i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="tiny" style={{ padding: '4px 0', borderBottom: '1px solid var(--line)' }}>🔁 {l}</motion.div>
-                ))}
-              </div>
-            )}
-          </Section>
-        </div>
-      </div>
-    </div>
-  );
-}
+// Portal 2.0 lives in ./Portal.tsx
 
 // ---------------- Signing ----------------
 function Signing() {
@@ -547,6 +353,7 @@ function Signing() {
   };
   return (
     <div className="col" style={{ gap: 16 }}>
+      <PortalReportCard g={g} />
       <div className="grid g4">
         <div className="stat-tile"><div className="l">Signees</div><div className="v">{signed.length}</div></div>
         <div className="stat-tile"><div className="l">Avg Stars</div><div className="v">{signed.length ? (signed.reduce((s, p) => s + p.stars, 0) / signed.length).toFixed(1) : '—'}</div></div>

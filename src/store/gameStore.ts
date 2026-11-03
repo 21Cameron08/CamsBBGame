@@ -11,6 +11,7 @@ import { listSaves, readSave, writeSave, deleteSave as delSave, allTeamMods, typ
 import { initLogos } from '../ui/logos';
 import { setSoundEnabled } from '../ui/sound';
 import { migrateStaff } from '../engine/staff';
+import { migratePortal } from '../engine/portal';
 
 export type Screen =
   | 'home' | 'roster' | 'staff' | 'schedule' | 'recruiting' | 'portal' | 'nil' | 'rankings' | 'standings' | 'bracket'
@@ -111,6 +112,7 @@ export const useGame = create<Store>((set, get) => ({
     const r = new RNG(1);
     r.state = g.rngState || Date.now();
     setRng(r);
+    migratePortal(g);
     const migrated = migrateStaff(g);
     if (migrated) g.version = Math.max(g.version, 2);
     set({ game: g, tick: get().tick + 1, screen: 'home', busy: null, modal: null, live: null });
@@ -262,7 +264,7 @@ export const useGame = create<Store>((set, get) => ({
       get().toast(`${poach.from} needs an answer about the ${poach.subject.split(' wants')[0]} job before you move on.`, 'bad');
       return;
     }
-    set({ busy: { label: 'Processing offseason…', progress: 0.5 } });
+    set({ busy: { label: g.phase === 'portal' ? (g.portal?.day ? `Portal day ${g.portal.day} — decisions coming in…` : 'Opening the portal window…') : 'Processing offseason…', progress: 0.5 } });
     await yieldUI();
     try {
       advanceOffseason(g);

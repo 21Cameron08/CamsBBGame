@@ -448,18 +448,66 @@ export interface CalendarDay {
   phase: Phase;
 }
 
-export interface PortalOffer { teamId: string; nil: number; promise: 'star' | 'starter' | 'rotation' | null; }
+export type PortalReason = 'Playing time' | 'NIL money' | 'Coaching change' | 'Bigger stage' | 'Closer to home' | 'Fresh start';
+export interface PortalOffer { teamId: string; nil: number; years?: number; promise: 'star' | 'starter' | 'rotation' | null; day?: number; }
+export interface PortalPriorities { nil: number; pt: number; win: number; prestige: number; home: number; coach: number; }
+export interface PortalEntry {
+  id: string; // player id
+  from: string; // previous team id
+  ask: number;
+  enterDay: number;
+  decideDay: number;
+  stars: number;
+  rank: number;
+  reason: PortalReason;
+  pri: PortalPriorities;
+  /** teamId -> relationship 0..100 built by calls, zooms, visits */
+  rel: Record<string, number>;
+  offers: PortalOffer[];
+  visits: string[];
+  top: string[] | null;
+  status: 'available' | 'committed' | 'unsigned';
+  to?: string;
+  dealNil?: number;
+  /** portal day of the user's last call / zoom */
+  userCall: number;
+  userZoom: number;
+  /** user has talked to him and knows his priorities */
+  known: boolean;
+  /** hidden 'gut feel' per school, stable for the whole window */
+  seed: number;
+}
+export interface PortalFeedItem {
+  day: number;
+  kind: 'enter' | 'commit' | 'top' | 'visit' | 'offer' | 'leak' | 'withdraw' | 'unsigned' | 'user' | 'open' | 'close';
+  text: string;
+  playerId?: string;
+  teamId?: string;
+  big?: boolean;
+  handle?: string;
+}
+export interface PortalCall { playerId: string; teamId: string; rivalNil: number; want: number; day: number; }
+export interface PortalGrade { teamId: string; score: number; grade: string; count: number; best?: string; }
 export interface PortalState {
-  round: number; // 0..maxRounds
-  maxRounds: number;
-  /** player ids currently in the portal */
-  pool: string[];
-  offers: Record<string, PortalOffer[]>;
-  /** player id -> asking NIL */
-  asks: Record<string, number>;
-  /** player id -> previous team */
-  from: Record<string, string>;
-  log: string[];
+  /** 0 = retention meetings (window not open yet), 1..maxDays */
+  day: number;
+  maxDays: number;
+  entries: Record<string, PortalEntry>;
+  feed: PortalFeedItem[];
+  hours: number;
+  hoursMax: number;
+  calls: PortalCall[];
+  grades?: PortalGrade[];
+  /** user decision results for the last processed day (for the reveal) */
+  lastResults?: { playerId: string; teamId: string; won: boolean }[];
+  // ---- legacy (v1 portal) fields, migrated on load ----
+  round?: number;
+  maxRounds?: number;
+  pool?: string[];
+  offers?: Record<string, PortalOffer[]>;
+  asks?: Record<string, number>;
+  from?: Record<string, string>;
+  log?: string[];
 }
 
 export interface Settings {
@@ -490,9 +538,22 @@ export interface UserState {
   offers: JobOffer[];
   fired: boolean;
   /** retention: players requesting meetings during portal */
-  retention: Record<string, { ask: number; resolved: boolean; staying?: boolean; prob?: number }>;
+  retention: Record<string, RetentionMeeting>;
   scoutedTeams: string[];
   achievements: string[];
+}
+
+export interface RetentionMeeting {
+  ask: number;
+  resolved: boolean;
+  staying?: boolean;
+  /** chance he leaves if you do nothing */
+  prob?: number;
+  reason?: PortalReason;
+  /** what the player said */
+  quote?: string;
+  /** option chosen */
+  choice?: 'pay' | 'promise' | 'talk' | 'release';
 }
 
 export interface JobOffer { teamId: string; salary: number; years: number; pitch: string; }
@@ -503,7 +564,8 @@ export type Moment =
   | { kind: 'title'; label: string; teamId: string }
   | { kind: 'levelUp'; level: number }
   | { kind: 'fired' }
-  | { kind: 'award'; label: string; personId: string };
+  | { kind: 'award'; label: string; personId: string }
+  | { kind: 'portalDay'; day: number; results: { playerId: string; teamId: string; won: boolean }[] };
 
 export interface GameState {
   version: number;

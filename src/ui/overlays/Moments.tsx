@@ -76,6 +76,8 @@ function MomentView({ g, m }: { g: GameState; m: Moment }) {
         </Shell>
       );
     }
+    case 'portalDay':
+      return <PortalDayReveal g={g} m={m} onDone={dismiss} />;
     case 'fired':
       return (
         <Shell>
@@ -173,6 +175,64 @@ function TitleMoment({ team, label, onDone }: { team: Team; label: string; onDon
         <div className="num" style={{ fontSize: 'clamp(42px, 7vw, 86px)', lineHeight: 1, marginTop: 12, textShadow: `0 0 40px ${team.colors[0]}` }}>{label.toUpperCase()}</div>
         <div className="h2" style={{ marginTop: 8 }}>{team.school} {team.mascot}</div>
         <button className="btn gold lg" style={{ marginTop: 24 }} onClick={onDone}>Cut down the nets ✂️</button>
+      </motion.div>
+    </Shell>
+  );
+}
+
+function PortalDayReveal({ g, m, onDone }: { g: GameState; m: Extract<Moment, { kind: 'portalDay' }>; onDone: () => void }) {
+  const [shown, setShown] = useState(0);
+  const team = g.teams[g.user.teamId];
+  const wins = m.results.filter((r) => r.won).length;
+  const all = shown >= m.results.length;
+  useEffect(() => {
+    sfx.drum();
+    const id = setInterval(() => setShown((s) => {
+      const n = s + 1;
+      const r = m.results[n - 1];
+      if (r) { if (r.won) sfx.swish(); else sfx.rim(); }
+      if (n >= m.results.length) clearInterval(id);
+      return n;
+    }), 750);
+    return () => clearInterval(id);
+  }, [m]);
+  useEffect(() => { if (all && wins) { sfx.fanfare(); sfx.crowd(1.2); } }, [all, wins]);
+  return (
+    <Shell colors={all && wins ? team.colors : undefined}>
+      {all && wins > 0 && <Confetti colors={[team.colors[0], team.colors[1], '#ffffff']} count={70 + wins * 40} />}
+      <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} style={{ width: 'min(900px, 94vw)', textAlign: 'center' }}>
+        <div className="pill bad pulse" style={{ marginBottom: 10 }}>● Portal Decision Day {m.day}</div>
+        <div className="h1" style={{ fontSize: 44, marginBottom: 18 }}>{all ? (wins ? `You landed ${wins} of ${m.results.length}!` : `Shut out — 0 of ${m.results.length}`) : 'The decisions are coming in…'}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(4, m.results.length)}, minmax(0, 200px))`, justifyContent: 'center', gap: 14 }}>
+          {m.results.map((r, i) => {
+            const p = g.players[r.playerId];
+            const t = g.teams[r.teamId];
+            const flipped = i < shown;
+            return (
+              <div key={r.playerId} style={{ perspective: 900 }}>
+                <motion.div animate={{ rotateY: flipped ? 180 : 0 }} transition={{ duration: 0.55, ease: [0.3, 0.7, 0.3, 1] }} style={{ position: 'relative', height: 220, transformStyle: 'preserve-3d' }}>
+                  <div className="card" style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', display: 'grid', placeItems: 'center', padding: 12 }}>
+                    <div>
+                      {p && <PlayerFace p={p} size={96} />}
+                      <div className="b" style={{ marginTop: 8 }}>{p ? `${p.first} ${p.last}` : 'Transfer'}</div>
+                      <div className="num" style={{ fontSize: 40, color: 'var(--dim)' }}>?</div>
+                    </div>
+                  </div>
+                  <div className="card" style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', display: 'grid', placeItems: 'center', padding: 12,
+                    borderColor: r.won ? 'var(--good)' : 'rgba(255,93,93,.5)', background: r.won ? `linear-gradient(160deg, ${t?.colors[0] ?? '#222'}cc, var(--panel))` : undefined }}>
+                    <div>
+                      {t && <TeamLogo team={t} size={84} />}
+                      <div className="b" style={{ marginTop: 8 }}>{p ? `${p.first} ${p.last}` : ''}</div>
+                      <div className="small muted">{r.won ? 'is coming to' : 'picked'} {t?.school}</div>
+                      <div className="num" style={{ fontSize: 26, marginTop: 4, color: r.won ? 'var(--good)' : 'var(--bad)' }}>{r.won ? 'WON' : 'LOST'}</div>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            );
+          })}
+        </div>
+        {all && <button className="btn primary lg" style={{ marginTop: 22 }} onClick={onDone}>Back to the portal</button>}
       </motion.div>
     </Shell>
   );
