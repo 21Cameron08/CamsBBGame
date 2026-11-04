@@ -19,6 +19,7 @@ import { RIVALRIES } from '../data/rivalries';
 import { beginSeasonEnd } from './offseason';
 import { autoSignUnsigned } from './nil';
 import { staffEffects, resolvePoach, applyStaffRenewChoice } from './staff';
+import { radioWeekly } from './radio';
 
 export function isUserGame(state: GameState, g: ScheduledGame) {
   return g.home === state.user.teamId || g.away === state.user.teamId;
@@ -265,7 +266,8 @@ export function weeklyTick(state: GameState, week: number) {
     p.morale = clamp(p.morale + (65 - p.morale) * 0.04, 0, 100);
     if (p.teamId === state.user.teamId && !p.nil && p.ovr >= 55) p.morale = clamp(p.morale - 2, 0, 100);
     if (p.stats.gp) p.followers = Math.round(p.followers * (1 + Math.min(0.04, (p.stats.pts / p.stats.gp) * 0.0012)));
-  }
+  }  // the weekly fan radio show
+  radioWeekly(state);
 }
 
 /** Move to the next calendar day, handling transitions */

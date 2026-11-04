@@ -21,6 +21,7 @@ import { beginSummer, summerDone, runSummer, evaluateGoals, devNewSeason } from 
 import { recordSeasonEnd, trackProgram } from './records';
 import { seasonInstallReset, resetPlaybook } from './schemes';
 import { retireJerseys, jerseyNights } from './legacy';
+import { airEpisode, radioOffseason } from './radio';
 
 const NCAA_BONUS: Record<string, number> = { Champion: 30, 'Runner-up': 22, 'Final Four': 18, 'Elite Eight': 12, 'Sweet 16': 8, 'Round of 32': 4, 'Round of 64': 1, 'First Four': 0.5 };
 
@@ -173,6 +174,7 @@ export function beginSeasonEnd(state: GameState) {
     addNews(state, { kind: 'award', headline: `${who.first} ${who.last} (${t.school}) named ${a.name}`, body: `${who.first} ${who.last} of ${t.school} has been named ${a.name} for the ${seasonLabel(state.season)} season.`, teams: [t.id], important: a.teamId === user.id || a.name === 'National Player of the Year', personId: who.id, personKind: a.playerId ? 'player' : 'coach' });
     if (a.teamId === user.id) state.user.moments.push({ kind: 'award', label: a.name, personId: who.id });
   }
+  airEpisode(state, 'finale');
 }
 
 function ordinal(n: number) {
@@ -352,6 +354,8 @@ export function doSigning(state: GameState) {
       if (candidates.length) r.committed = rng.pick(candidates).id;
     }
   }
+  // the radio show airs its Signing Day special while the class is still on the board
+  airEpisode(state, 'signing');
   for (const r of recruits) {
     if (!r.committed) { delete state.recruits[r.id]; continue; }
     const t = state.teams[r.committed];
@@ -515,6 +519,7 @@ export function newSeason(state: GameState) {
 
 /** Advance whichever offseason step we're in */
 export function advanceOffseason(state: GameState) {
+  const before = state.phase;
   switch (state.phase) {
     case 'seasonEnd': doDeclarations(state); break;
     case 'declarations': openPortal(state); break;
@@ -525,6 +530,7 @@ export function advanceOffseason(state: GameState) {
     case 'scheduling': lockScheduling(state); newSeason(state); break;
     default: break;
   }
+  radioOffseason(state, before);
 }
 
 export function teamTier(state: GameState, t: Team) { return confTierOf(state, t); }

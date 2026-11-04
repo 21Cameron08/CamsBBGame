@@ -705,6 +705,8 @@ export interface GameState {
   staff?: StaffState;
   /** jerseys retired during the dynasty (created on first use) */
   legacy?: { retired: Record<string, RetiredJersey[]> };
+  /** Full Court Fanatics, the weekly fan radio show (older saves start without it) */
+  radio?: RadioState;
   /** scheme familiarity for the user's team (created on first use) */
   playbook?: PlaybookState;
   /** league and program record books (created on first use) */
@@ -918,4 +920,49 @@ export interface RetiredJersey {
   why: string;
   /** season it was retired */
   season: number;
+}
+
+// ---------------- Fan radio ----------------
+export type RadioHost = 'sal' | 'dex';
+export type RadioTag = 'hot' | 'bad' | 'good' | 'info' | 'lock';
+export interface RadioLine {
+  who: RadioHost | 'caller';
+  text: string;
+  /** caller's on-air name, e.g. "Gary in Topeka" */
+  caller?: string;
+  tag?: RadioTag;
+}
+export interface RadioSegment { title: string; icon: string; lines: RadioLine[] }
+export type RadioEpisodeKind = 'weekly' | 'preview' | 'finale' | 'portal' | 'signing' | 'draft';
+export interface RadioEpisode {
+  id: string;
+  no: number;
+  kind: RadioEpisodeKind;
+  season: number;
+  day: number;
+  date: string;
+  phase: Phase;
+  title: string;
+  segments: RadioSegment[];
+  heard?: boolean;
+}
+export interface RadioLock { who: RadioHost; gameId: string; pick: string; opp: string; season: number; result?: 'W' | 'L' }
+export interface RadioPicks { title: string; sleeper?: string; bust?: string; poy?: string }
+export interface RadioState {
+  episodes: RadioEpisode[];
+  /** episodes aired, ever */
+  aired: number;
+  locks: RadioLock[];
+  /** season lock records */
+  record: Record<RadioHost, [number, number]>;
+  recordSeason: number;
+  /** preseason predictions, graded in the season finale */
+  preds?: { season: number; sal: RadioPicks; dex: RadioPicks };
+  /** recently used bits, so the show doesn't repeat itself */
+  recent: string[];
+  /** polls seen at the last episode, and the No. 1 team then */
+  pollCount?: number;
+  no1?: string;
+  /** game day of the last episode (the next show covers everything since) */
+  lastDay?: number;
 }

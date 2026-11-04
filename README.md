@@ -197,6 +197,22 @@ Production build: `npm run build`, then `npm run preview` (or host the `dist/` f
   - assistants getting poached
   - redshirt decisions
   - injured players begging to play
+- **Full Court Fanatics**, a weekly fan radio show on the fictional 98.7 The Hoop (sidebar → **Fan Radio**):
+  - two hosts: **Big Sal**, who brings hot takes, bad takes and an uncle with opinions, and **Dex "The Professor"**, who brings good takes, numbers and random info
+  - a new episode every week of the season, built from your league:
+    - the poll: new No. 1s, risers and fallers, overrated and underrated teams by the NET
+    - the week's upsets, thrillers, blowouts and best individual games
+    - your team: results, your best player, your defense, what you told the press, the hot seat and your next game
+    - the Player of the Year race, the nation's leading scorer, freshmen and stat leaders
+    - the recruiting trail, Championship Week bubble talk, and bracket talk all through March
+    - program traditions and history, and entries from the record book
+    - the Hot Take Hotline, with callers from your town and around the country
+  - **Locks of the Week**: both hosts pick a game, the results are read on air the next week, and a season-long lock standings board keeps score
+  - **Preseason predictions** (champion, sleeper, bust, Player of the Year) go on the record and are graded in the season finale
+  - offseason specials: the season finale, the portal, Signing Day and draft night
+  - each episode plays line by line. Words appear as the hosts speak, and the speaker's booth lights up. Takes are labeled (🔥 hot, 🗑️ bad, 🎯 good, 💡 random info, 🔒 lock).
+  - controls: 1×, 1.5×, 2× and 3× speed, pause (Space), next line (→), skip segment, jump to any segment, read the full transcript, and an archive of the last 12 episodes
+  - a quiet toast and a **NEW** badge on the sidebar when an episode airs. Older saves get a first episode the next time they load.
 - **Media hub**: auto-written game recaps, upset alerts, commitment and portal news, awards and draft coverage, plus **Courtside**, a fictional social feed of fans, insiders, analysts, haters and recruits.
 - **Polls and postseason**:
   - AP Top 25 voting with momentum, NET-style ratings, Wins Above Bubble, and weekly **Bracketology**
@@ -277,6 +293,7 @@ src/
     legacy.ts      program legacy: Ring of Honor legends, jersey retirements, jersey nights, recruiting pitch
     portal.ts      transfer portal: retention, entry waves, odds, bidding wars, calls, decisions, grades
     press.ts       press conferences: question pools, reporters, media memory and follow-ups
+    radio.ts       Full Court Fanatics: weekly fan radio episodes, locks, predictions, offseason specials
     events.ts / media.ts   story events, news & social
     staff.ts       coaching staff: market, effects, contracts, poaching, coaching tree
     scheduling.ts  Scheduling Office: Feast Week events, booking rules, guarantees, series, résumé meter

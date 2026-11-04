@@ -16,10 +16,11 @@ import { ensureDevelopment } from '../engine/development';
 import { recordBook } from '../engine/records';
 import { playbookState } from '../engine/schemes';
 import { loreOf } from '../data/lore';
+import { ensureRadio } from '../engine/radio';
 
 export type Screen =
   | 'home' | 'roster' | 'staff' | 'schedule' | 'recruiting' | 'portal' | 'nil' | 'rankings' | 'standings' | 'bracket'
-  | 'media' | 'stats' | 'coach' | 'inbox' | 'offseason' | 'settings' | 'history' | 'development' | 'records';
+  | 'media' | 'stats' | 'coach' | 'inbox' | 'offseason' | 'settings' | 'history' | 'development' | 'records' | 'radio';
 
 export type Modal =
   | { kind: 'player'; id: string }
@@ -119,6 +120,7 @@ export const useGame = create<Store>((set, get) => ({
     migratePortal(g);
     const migrated = migrateStaff(g);
     ensureDevelopment(g);
+    ensureRadio(g);
     recordBook(g);
     playbookState(g);
     if (migrated) g.version = Math.max(g.version, 2);
