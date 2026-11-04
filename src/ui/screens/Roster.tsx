@@ -9,22 +9,12 @@ import { depthChart } from '../../engine/sim';
 import { RATING_KEYS, RATING_LABELS, type DefStyle, type OffStyle, type Player } from '../../engine/types';
 import { ratingColor } from '../color';
 import { sfx } from '../sound';
+import { OFF_SCHEMES, DEF_SCHEMES } from '../../engine/schemes';
+import { SchemePicker, MatchupCard, TendencyPanel } from './Playbook';
 
-export const OFF_STYLES: { id: OffStyle; label: string; icon: string; desc: string }[] = [
-  { id: 'balanced', label: 'Balanced', icon: '⚖️', desc: 'Take what the defense gives you.' },
-  { id: 'motion', label: 'Motion', icon: '🔄', desc: 'Ball movement, more assists, fewer turnovers.' },
-  { id: 'pace', label: 'Pace & Space', icon: '⚡', desc: 'Run in transition, early threes.' },
-  { id: 'post', label: 'Inside-Out', icon: '🏋️', desc: 'Feed the bigs, punish mismatches.' },
-  { id: 'drive', label: 'Dribble Drive', icon: '🏃', desc: 'Attack the rim, draw fouls.' },
-  { id: 'three', label: 'Bombs Away', icon: '🎯', desc: 'Hunt threes. Live and die by the arc.' },
-];
-export const DEF_STYLES: { id: DefStyle; label: string; icon: string; desc: string }[] = [
-  { id: 'man', label: 'Man-to-Man', icon: '🛡️', desc: 'Solid fundamentals.' },
-  { id: 'packline', label: 'Pack Line', icon: '🧱', desc: 'Wall off the paint, concede jumpers.' },
-  { id: 'zone', label: '2-3 Zone', icon: '🕸️', desc: 'Protect the rim and boards, invite threes.' },
-  { id: 'press', label: 'Full-Court Press', icon: '🔥', desc: 'Force turnovers; tiring, risky.' },
-  { id: 'switch', label: 'Switch Everything', icon: '🔀', desc: 'Fewer breakdowns; needs versatility.' },
-];
+/** Scheme lists (from the playbook) used across the UI */
+export const OFF_STYLES: { id: OffStyle; label: string; icon: string; desc: string }[] = OFF_SCHEMES.map(({ id, label, icon, desc }) => ({ id, label, icon, desc }));
+export const DEF_STYLES: { id: DefStyle; label: string; icon: string; desc: string }[] = DEF_SCHEMES.map(({ id, label, icon, desc }) => ({ id, label, icon, desc }));
 
 export function RosterScreen() {
   const g = useGameState();
@@ -39,7 +29,7 @@ export function RosterScreen() {
           <h1 className="h1" style={{ marginTop: 6 }}>Roster & Lineup</h1>
         </div>
         <div className="spacer" />
-        <Tabs id="roster" value={tab} onChange={setTab} tabs={[{ id: 'roster', label: 'Roster' }, { id: 'lineup', label: 'Lineup & Strategy' }, { id: 'ratings', label: 'Ratings Matrix' }]} />
+        <Tabs id="roster" value={tab} onChange={setTab} tabs={[{ id: 'roster', label: 'Roster' }, { id: 'lineup', label: 'Lineup & Playbook' }, { id: 'ratings', label: 'Ratings Matrix' }]} />
       </div>
       {tab === 'roster' && <RosterTable players={players} />}
       {tab === 'lineup' && <Lineup />}
@@ -154,22 +144,16 @@ function Lineup() {
             ))}
           </div>
         </Section>
-        <Section title="Offensive System">
-          <div className="grid g3">
-            {OFF_STYLES.map((o) => (
-              <StyleCard key={o.id} on={s.offense === o.id} icon={o.icon} label={o.label} desc={o.desc} onClick={() => mutate((gg) => { gg.teams[gg.user.teamId].strategy.offense = o.id; })} />
-            ))}
-          </div>
+        <Section title="Offensive System" right={<span className="tiny muted">Fit = how your roster suits it · bar = how well it's installed</span>}>
+          <SchemePicker g={g} side="off" />
         </Section>
         <Section title="Defensive Scheme">
-          <div className="grid g3">
-            {DEF_STYLES.map((o) => (
-              <StyleCard key={o.id} on={s.defense === o.id} icon={o.icon} label={o.label} desc={o.desc} onClick={() => mutate((gg) => { gg.teams[gg.user.teamId].strategy.defense = o.id; })} />
-            ))}
-          </div>
+          <SchemePicker g={g} side="def" />
         </Section>
       </div>
       <div className="col" style={{ gap: 16 }}>
+        <MatchupCard g={g} />
+        <TendencyPanel g={g} />
         <Section title="Tempo">
           <div className="row" style={{ justifyContent: 'space-between' }}>
             {['Grind', 'Patient', 'Normal', 'Up-tempo', 'Blitz'].map((l, i) => (

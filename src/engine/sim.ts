@@ -2,7 +2,8 @@
 // Works in two modes: fast (no play-by-play strings) for the ~6,000 games a
 // season, and live (pbp) for the user's games, stepped one possession at a time.
 import { rng, clamp } from './rng';
-import type { BoxPlayer, BoxScore, Player, Pos, Ratings, ShotMark, Strategy } from './types';
+import type { BoxPlayer, BoxScore, DefStyle, OffStyle, Player, Pos, Ratings, ShotMark, Strategy } from './types';
+import { OFF, DEF, AI_FAMILIARITY, counterEdge, famPenalty, fitEdge, type OffScheme, type DefScheme } from './schemes';
 
 export interface SimTeamSetup {
   id: string;
@@ -18,6 +19,26 @@ export interface SimTeamSetup {
   pressure?: number;
   /** staff: energy drain multiplier */
   staminaMul?: number;
+  /** scheme familiarity (user's team; AI programs know their schemes) */
+  fam?: { off: Partial<Record<OffStyle, number>>; def: Partial<Record<DefStyle, number>> };
+}
+
+/** Everything a team's schemes and tendencies do, resolved for one game */
+interface TeamMods {
+  off: OffScheme;
+  def: DefScheme;
+  /** make% delta on this team's shots from fit and familiarity */
+  offExec: number;
+  offTov: number;
+  /** make% delta on the opponent's shots from this team's defensive fit and familiarity */
+  defExec: number;
+  defTov: number;
+  crash: number;
+  shotProfile: number;
+  pressure: number;
+  help: number;
+  /** best scorer (box-and-one target) */
+  starId: string | null;
 }
 
 export interface SimOptions {
@@ -59,6 +80,8 @@ interface SP {
   target: number; // target minutes
   depth: number;
   usage: number;
+  /** usage before scheme adjustments */
+  base: number;
   box: BoxPlayer;
   out: boolean; // fouled out
   short: string;
@@ -183,6 +206,7 @@ export class GameSim {
   private lastLeader: -1 | 0 | 1 = -1;
   /** strategies can be changed live */
   strategy: [Strategy, Strategy];
+  mods!: [TeamMods, TeamMods];
 
   constructor(home: SimTeamSetup, away: SimTeamSetup, opts: SimOptions = {}) {
     this.setups = [home, away];
@@ -192,6 +216,9 @@ export class GameSim {
     this.tourney = !!opts.tourney;
     this.strategy = [{ ...home.strategy }, { ...away.strategy }];
     this.sp = [this.buildTeam(0), this.buildTeam(1)];
+    this.mods = [this.computeMods(0), this.computeMods(1)];
+    this.applyUsage(0);
+    this.applyUsage(1);
     this.syncCourt(0);
     this.syncCourt(1);
     this.poss = rng.chance(0.5) ? 0 : 1;
@@ -209,25 +236,69 @@ export class GameSim {
       for (const k of Object.keys(r) as (keyof Ratings)[]) r[k] = r[k] + moraleMod;
       let usage = Math.exp((offSkill(r) - 60) * 0.042);
       if (p.traits.includes('diva')) usage *= 1.15;
-      if (p.pos === 'C' && this.strategy[i].offense !== 'post') usage *= 0.82;
-      if (this.strategy[i].offense === 'post' && isBig(p.pos)) usage *= 1.25;
-      if (this.strategy[i].offense === 'three' && r.tp > 70) usage *= 1.12;
-      if (this.strategy[i].offense === 'drive' && (r.ins + r.spd) / 2 > 68) usage *= 1.1;
       const box: BoxPlayer = {
         id: p.id, name: `${p.first} ${p.last}`, pos: p.pos, num: p.num, starter: idx < 5,
         min: 0, pts: 0, fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0, orb: 0, drb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0, pm: 0,
       };
       return {
         p, r, on: idx < 5, energy: 100, fouls: 0, secs: 0,
-        target: mins[idx] ?? 0, depth: idx, usage, box, out: false,
+        target: mins[idx] ?? 0, depth: idx, usage, base: usage, box, out: false,
         short: `${p.first[0]}. ${p.last}`,
       };
     });
   }
 
+  /** Resolve schemes, fit, familiarity and tendencies for one team */
+  private computeMods(i: 0 | 1): TeamMods {
+    const st = this.strategy[i], set = this.setups[i];
+    const off = OFF[st.offense] ?? OFF.balanced, def = DEF[st.defense] ?? DEF.man;
+    const famO = set.fam ? set.fam.off[off.id] ?? 30 : AI_FAMILIARITY;
+    const famD = set.fam ? set.fam.def[def.id] ?? 30 : AI_FAMILIARITY;
+    const pO = famPenalty(famO), pD = famPenalty(famD);
+    let star: SP | null = null;
+    for (const x of this.sp?.[i] ?? []) if (!star || x.base > star.base) star = x;
+    const t = (v: number | undefined) => clamp(Math.round(v ?? 0), -2, 2);
+    return {
+      off, def,
+      offExec: fitEdge(off.fit(set.players).score) + pO.make,
+      offTov: pO.tov,
+      defExec: -fitEdge(def.fit(set.players).score) * 0.875 - pD.make * 0.8,
+      defTov: -pD.tov * 0.6,
+      crash: t(st.crash), shotProfile: t(st.shotProfile), pressure: t(st.pressure), help: t(st.help),
+      starId: star?.p.id ?? null,
+    };
+  }
+
+  /** Who gets the ball depends on the offense */
+  private applyUsage(i: 0 | 1) {
+    const st = this.strategy[i], m = this.mods[i], team = this.sp[i];
+    const handler = team.reduce<SP | null>((b, x) => (!b || x.r.hdl + x.r.pas > b.r.hdl + b.r.pas ? x : b), null);
+    const roller = team.filter((x) => isBig(x.p.pos)).reduce<SP | null>((b, x) => (!b || Math.max(x.r.ath + x.r.ins, x.r.tp * 2) > Math.max(b.r.ath + b.r.ins, b.r.tp * 2) ? x : b), null);
+    for (const x of team) {
+      let u = x.base;
+      const big = isBig(x.p.pos);
+      switch (m.off.id) {
+        case 'post': if (big) u *= 1.25; break;
+        case 'three': if (x.r.tp > 70) u *= 1.12; break;
+        case 'drive': if ((x.r.ins + x.r.spd) / 2 > 68) u *= 1.1; break;
+        case 'princeton': u = Math.pow(u, 0.7); break;
+        case 'motion': u = Math.pow(u, 0.85); break;
+        case 'flex': if (x.p.pos === 'SF' || x.p.pos === 'PF') u *= 1.12; break;
+        case 'pnr': if (x === handler) u *= 1.22; else if (x === roller) u *= 1.12; break;
+        case 'iso': u *= x.p.id === m.starId ? 1.5 : 0.92; break;
+        case 'pace': if (isGuard(x.p.pos)) u *= 1.05; break;
+      }
+      if (x.p.pos === 'C' && m.off.id !== 'post' && !(m.off.id === 'pnr' && x === roller)) u *= 0.82;
+      if (st.goTo && x.p.id === st.goTo) u *= 1.3;
+      x.usage = u;
+    }
+  }
+
   // ---------------- public controls ----------------
   setStrategy(team: 0 | 1, s: Partial<Strategy>) {
     this.strategy[team] = { ...this.strategy[team], ...s };
+    this.mods[team] = this.computeMods(team);
+    this.applyUsage(team);
   }
   callTimeout(team: 0 | 1): boolean {
     if (this.timeouts[team] <= 0 || this.done) return false;
@@ -280,16 +351,16 @@ export class GameSim {
 
   private pace(): number {
     const tempoPace = (tp: number) => [0, 62.5, 66, 69, 72.5, 76][clamp(Math.round(tp), 1, 5)];
-    let p = (tempoPace(this.strategy[0].tempo) + tempoPace(this.strategy[1].tempo)) / 2;
-    if (this.strategy[0].defense === 'press' || this.strategy[1].defense === 'press') p += 2.5;
-    return p;
+    const [a, b] = this.mods;
+    return (tempoPace(this.strategy[0].tempo) + tempoPace(this.strategy[1].tempo)) / 2 + (a.off.pace + a.def.pace + b.off.pace + b.def.pace) / 2;
   }
 
   private advance(dur: number) {
     const before = this.t;
     this.t += dur;
     for (const team of [0, 1] as const) {
-      const tempoDrain = (1 + (this.strategy[team].tempo - 3) * 0.08 + (this.strategy[team].defense === 'press' ? 0.15 : 0)) * (this.setups[team].staminaMul ?? 1);
+      const m = this.mods[team];
+      const tempoDrain = (1 + (this.strategy[team].tempo - 3) * 0.08 + m.def.drain + m.pressure * 0.04) * (this.setups[team].staminaMul ?? 1);
       for (const x of this.sp[team]) {
         if (x.on) {
           x.secs += dur;
@@ -366,7 +437,7 @@ export class GameSim {
       if (!buzzer && this.turnover(o, d, transition)) return;
 
       // ---- non-shooting foul ----
-      if (!buzzer && rng.chance(0.075 + (this.strategy[d].defense === 'press' ? 0.02 : 0))) {
+      if (!buzzer && rng.chance(Math.max(0.03, 0.075 + this.mods[d].def.foul + this.mods[d].pressure * 0.008))) {
         const fouler = this.pickFouler(d, false);
         this.commitFoul(d, fouler, `Foul on ${fouler.short}`);
         if (this.teamFouls[d] >= 7) {
@@ -402,12 +473,8 @@ export class GameSim {
     pressure /= don.length;
     fatigue /= on.length;
     let p = 0.16 + (pressure - sec) * 0.0012 + fatigue * 0.002;
-    const ds = this.strategy[d].defense;
-    if (ds === 'press') p += 0.022;
-    if (ds === 'switch') p -= 0.008;
-    if (ds === 'zone') p -= 0.01;
-    if (this.strategy[o].offense === 'motion') p -= 0.006;
-    if (this.strategy[o].offense === 'pace') p += 0.008;
+    const mo = this.mods[o], md = this.mods[d];
+    p += md.def.tov + md.defTov + mo.off.tov + mo.offTov + md.pressure * 0.006;
     if (transition) p += 0.02;
     if (!this.neutral) p += o === 0 ? -0.006 : 0.006;
     p -= this.setups[o].coachTactics * 0.0015;
@@ -416,7 +483,7 @@ export class GameSim {
     if (!rng.chance(p)) return false;
     const culprit = pickW(on, (x) => x.usage * (1.35 - x.r.hdl / 100));
     culprit.box.tov++;
-    const pSteal = clamp(0.5 + (pressure - 60) * 0.008, 0.3, 0.7);
+    const pSteal = clamp(0.5 + (pressure - 60) * 0.008 + md.def.steal + md.pressure * 0.04, 0.3, 0.75);
     if (rng.chance(pSteal)) {
       const thief = pickW(don, (x) => Math.exp((x.r.stl - 60) * 0.06));
       thief.box.stl++;
@@ -442,7 +509,8 @@ export class GameSim {
   }
 
   private pickShooter(o: 0 | 1): SP {
-    return pickW(this.onCourt(o), (x) => x.usage);
+    const boxed = this.mods[1 - o].def.id === 'boxone' ? this.mods[o].starId : null;
+    return pickW(this.onCourt(o), (x) => (x.p.id === boxed ? x.usage * 0.7 : x.usage));
   }
   private pickFTShooter(o: 0 | 1): SP {
     const on = this.onCourt(o);
@@ -486,16 +554,14 @@ export class GameSim {
     let wr = Math.exp((fin - 60) * 0.04) * 1.0;
     let wm = Math.exp((r.mid - 60) * 0.035) * 0.62;
     let wt = r.tp < 45 ? 0.02 : Math.exp((r.tp - 60) * 0.075) * 1.05;
-    const os = this.strategy[o].offense, ds = this.strategy[d].defense;
-    if (os === 'three') { wt *= 1.35; wm *= 0.8; }
-    if (os === 'post') { if (isBig(x.p.pos)) wr *= 1.35; wt *= 0.8; }
-    if (os === 'drive') { wr *= 1.3; wm *= 0.85; }
-    if (os === 'pace') { wt *= 1.12; wr *= 1.08; wm *= 0.8; }
-    if (os === 'motion') { wt *= 1.05; }
-    if (ds === 'zone') { wt *= 1.15; wr *= 0.86; }
-    if (ds === 'packline') { wt *= 1.15; wr *= 0.82; wm *= 1.1; }
-    if (ds === 'switch') { wm *= 1.15; }
-    if (ds === 'press') { wr *= 1.1; }
+    const mo = this.mods[o], md = this.mods[d];
+    // the post offense feeds the bigs; everybody else just plays inside-out
+    wr *= mo.off.id === 'post' ? (isBig(x.p.pos) ? 1.35 : 1.05) : mo.off.mix.rim;
+    wm *= mo.off.mix.mid;
+    wt *= mo.off.mix.three;
+    wr *= md.def.mix.rim; wm *= md.def.mix.mid; wt *= md.def.mix.three;
+    wt *= 1 + 0.12 * mo.shotProfile; wr *= 1 - 0.07 * mo.shotProfile; wm *= 1 - 0.05 * mo.shotProfile;
+    wt *= 1 + 0.06 * md.help; wr *= 1 - 0.05 * md.help;
     if (ctx.transition) { wr *= 1.8; wt *= 1.1; }
     return rng.weighted<ShotType>(['rim', 'mid', 'three'], [wr, wm, wt]);
   }
@@ -518,7 +584,7 @@ export class GameSim {
     const r = shooter.r;
     const remaining = this.periodEnd - this.t;
     const lead = this.score[o] - this.score[d];
-    const ds = this.strategy[d].defense;
+    const mo = this.mods[o], md = this.mods[d];
 
     // --- make probability ---
     let p: number;
@@ -530,18 +596,17 @@ export class GameSim {
       p = 0.575 + (fin - rimD) * 0.0026;
       if (ctx.transition) p += 0.1;
       if (ctx.putback) p += 0.03;
-      if (ds === 'packline') p -= 0.02;
-      if (ds === 'zone') p -= 0.012;
-      if (ds === 'press') p += 0.03;
+      p += md.pressure * 0.006 - md.help * 0.008;
     } else if (type === 'mid') {
       p = 0.385 + (r.mid - def.r.perD) * 0.0021;
-      if (ds === 'zone') p += 0.01;
     } else {
       p = 0.322 + (r.tp - (def.r.perD * 0.6 + 62 * 0.4)) * 0.0026;
-      if (ds === 'zone') p -= 0.016;
-      if (ds === 'packline') p += 0.005;
       if (ctx.transition) p += 0.03;
+      p += md.help * 0.006;
     }
+    // schemes: what each system does, how well it's run, and how they match up
+    p += mo.off.make[type] + md.def.make[type] + mo.offExec + md.defExec + counterEdge(mo.off.id, md.def.id);
+    if (md.def.id === 'boxone' && shooter.p.id === mo.starId) p -= 0.025;
     p += (r.iq - 65) * 0.0006;
     p += this.setups[o].coachTactics * 0.0018 - this.setups[d].coachTactics * 0.0012 - (this.setups[d].defBonus ?? 0);
     p -= Math.max(0, 72 - shooter.energy) * 0.0022;
@@ -561,6 +626,7 @@ export class GameSim {
     // --- shooting foul ---
     let pFoul = type === 'rim' ? 0.215 + (r.ins + r.str - def.r.intD - def.r.str) * 0.001 : type === 'mid' ? 0.065 : 0.018;
     if (def.p.traits.includes('hothead')) pFoul *= 1.25;
+    pFoul *= mo.off.foulDraw * md.def.shootFoul;
     if (!this.neutral) pFoul *= o === 0 ? 1.06 : 0.94;
     pFoul = clamp(pFoul, 0.005, 0.3);
     const fouled = !ctx.buzzer && rng.chance(pFoul);
@@ -594,7 +660,7 @@ export class GameSim {
     this.recordFG(o, shooter, type, made, loc, d);
     if (made) {
       let assister: SP | null = null;
-      const pAst = (type === 'three' ? 0.8 : type === 'rim' ? 0.5 : 0.36) + (this.strategy[o].offense === 'motion' ? 0.06 : 0) - (ctx.putback ? 0.4 : 0);
+      const pAst = (type === 'three' ? 0.8 : type === 'rim' ? 0.5 : 0.36) + mo.off.ast - (ctx.putback ? 0.4 : 0);
       if (rng.chance(clamp(pAst, 0, 0.9))) {
         assister = pickW(this.onCourt(o), (y) => (y === shooter ? 0 : Math.exp((y.r.pas - 60) * 0.07)));
         assister.box.ast++;
@@ -710,8 +776,7 @@ export class GameSim {
     const on = this.onCourt(o), don = this.onCourt(d);
     const rs = (arr: SP[]) => { let s = 0; for (const x of arr) s += x.r.reb * 0.7 + x.r.str * 0.15 + x.r.ath * 0.15; return s / arr.length; };
     let p = 0.295 + (rs(on) - rs(don)) * 0.002 + mod;
-    if (this.strategy[d].defense === 'zone') p += 0.025;
-    if (this.strategy[o].offense === 'pace') p -= 0.02;
+    p += this.mods[o].off.orb + this.mods[d].def.orbAllowed + this.mods[o].crash * 0.022;
     p = clamp(p, 0.08, 0.5);
     if (rng.chance(p)) {
       const x = pickW(on, (y) => Math.exp((y.r.reb - 60) * 0.06));
@@ -722,7 +787,8 @@ export class GameSim {
     const x = pickW(don, (y) => Math.exp((y.r.reb - 60) * 0.06));
     x.box.drb++;
     if (this.pbp) this.emit(d, 'dreb', `${x.short} with the defensive board`, { pid: x.p.id });
-    if (rng.chance(0.14)) this.nextTransition = true;
+    // leaking out vs crashing: the rebounding team runs more when the shooters crashed
+    if (rng.chance(clamp(0.14 * this.mods[d].off.transition + this.mods[o].crash * 0.03, 0.02, 0.4))) this.nextTransition = true;
     return 'drb';
   }
 

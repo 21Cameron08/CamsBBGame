@@ -5,7 +5,7 @@ import { TeamLogo, PlayerFace, Ovr, Confetti } from '../components/common';
 import type { PlayEvent } from '../../engine/sim';
 import type { BoxPlayer, Team } from '../../engine/types';
 import { teamAccent, mix } from '../color';
-import { OFF_STYLES, DEF_STYLES } from '../screens/Roster';
+import { schemeOptions } from '../screens/Playbook';
 import { BoxTable, ShotChart } from './ModalHost';
 import { sfx } from '../sound';
 
@@ -269,11 +269,11 @@ export function LiveGame({ live }: { live: LiveSession }) {
         <button className="btn sm" disabled={sim.done} onClick={() => simTo('end')}>Sim to end</button>
         <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--line)' }} />
         <button className="btn sm gold" disabled={sim.done || sim.timeouts[userSide] <= 0} onClick={() => { if (sim.callTimeout(userSide)) { sfx.buzzer(); useGame.getState().toast('Timeout! Your guys catch their breath and reset.'); } }}>⏱ Timeout ({sim.timeouts[userSide]})</button>
-        <select className="select" style={{ width: 170 }} value={strat.offense} onChange={(e) => { sim.setStrategy(userSide, { offense: e.target.value as typeof strat.offense }); setFrame((f) => f + 1); }}>
-          {OFF_STYLES.map((o) => <option key={o.id} value={o.id}>{o.icon} {o.label}</option>)}
+        <select className="select" style={{ width: 200 }} title="Offense (fit · installed · matchup)" value={strat.offense} onChange={(e) => { sim.setStrategy(userSide, { offense: e.target.value as typeof strat.offense }); setFrame((f) => f + 1); }}>
+          {schemeOptions(game, 'off', sim.strategy[1 - userSide].defense).map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
         </select>
-        <select className="select" style={{ width: 170 }} value={strat.defense} onChange={(e) => { sim.setStrategy(userSide, { defense: e.target.value as typeof strat.defense }); setFrame((f) => f + 1); }}>
-          {DEF_STYLES.map((o) => <option key={o.id} value={o.id}>{o.icon} {o.label}</option>)}
+        <select className="select" style={{ width: 200 }} title="Defense (fit · installed · matchup)" value={strat.defense} onChange={(e) => { sim.setStrategy(userSide, { defense: e.target.value as typeof strat.defense }); setFrame((f) => f + 1); }}>
+          {schemeOptions(game, 'def', sim.strategy[1 - userSide].offense).map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
         </select>
         <div className="seg">{['Grind', 'Slow', 'Norm', 'Fast', 'Blitz'].map((l, i) => <button key={l} className={strat.tempo === i + 1 ? 'on' : ''} onClick={() => { sim.setStrategy(userSide, { tempo: i + 1 }); setFrame((f) => f + 1); }}>{l}</button>)}</div>
         <div className="spacer" />

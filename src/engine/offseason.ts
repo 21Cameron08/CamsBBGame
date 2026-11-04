@@ -19,6 +19,7 @@ import { openScheduling, lockScheduling, applyScheduleEffects } from './scheduli
 import { openPortal, advancePortalDay } from './portal';
 import { beginSummer, summerDone, runSummer, evaluateGoals, devNewSeason } from './development';
 import { recordSeasonEnd, trackProgram } from './records';
+import { seasonInstallReset, resetPlaybook } from './schemes';
 
 const NCAA_BONUS: Record<string, number> = { Champion: 30, 'Runner-up': 22, 'Final Four': 18, 'Elite Eight': 12, 'Sweet 16': 8, 'Round of 32': 4, 'Round of 64': 1, 'First Four': 0.5 };
 
@@ -291,6 +292,7 @@ export function takeJob(state: GameState, teamId: string) {
   addNews(state, { kind: 'coach', headline: `${nu.school} hires ${coach.first} ${coach.last}`, body: `${coach.first} ${coach.last} leaves ${old.school} to take over at ${nu.school}.`, teams: [nu.id, old.id], important: true, personId: coach.id, personKind: 'coach' });
   state.user.moments.push({ kind: 'title', label: `New Job: ${nu.school}`, teamId: nu.id });
   trackProgram(state, nu.id);
+  resetPlaybook(state);
   state.user.press = introPresser(state, { fromTeamId: old.id, fired: wasFired });
 }
 
@@ -490,6 +492,7 @@ export function newSeason(state: GameState) {
   const ranks = runPoll(state, 'Preseason AP Poll');
   setExpectations(state);
   devNewSeason(state);
+  seasonInstallReset(state);
   state.user.hoursMax = hoursForWeek(state);
   state.user.hours = state.user.hoursMax;
   state.user.press = mediaDayPresser(state);

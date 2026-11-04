@@ -13,6 +13,7 @@ import { gainXp, hoursForWeek, applyEffects } from './coach';
 import { postgamePresser, recordClaim, selectionPresser } from './press';
 import { weeklyPractice, practiceMods } from './development';
 import { recordGame } from './records';
+import { weeklyInstall } from './schemes';
 import { randomInjury } from './player';
 import { RIVALRIES } from '../data/rivalries';
 import { beginSeasonEnd } from './offseason';
@@ -232,8 +233,12 @@ export function weeklyTick(state: GameState, week: number) {
     const ranks = runPoll(state, label);
     pollNews(state, label, ranks);
   }
-  // last week's practice
+  // last week's practice: player development and installing the playbook
   weeklyPractice(state);
+  if (state.day > 0 && ['regular', 'confTourney', 'ncaa'].includes(state.phase)) {
+    const uc = state.coaches[state.user.coachId];
+    weeklyInstall(state, { tactics: (uc?.skills.tactics ?? 5) + (state.staff ? staffEffects(state).tactics : 0), gamePrep: state.development?.practice === 'gameprep' });
+  }
   // recruiting: decisions use the board exactly as the user left it this week,
   // then rivals put in next week's work and the board refreshes.
   const commits = decideRecruits(state, week);

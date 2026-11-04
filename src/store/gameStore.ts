@@ -14,6 +14,7 @@ import { migrateStaff } from '../engine/staff';
 import { migratePortal } from '../engine/portal';
 import { ensureDevelopment } from '../engine/development';
 import { recordBook } from '../engine/records';
+import { playbookState } from '../engine/schemes';
 
 export type Screen =
   | 'home' | 'roster' | 'staff' | 'schedule' | 'recruiting' | 'portal' | 'nil' | 'rankings' | 'standings' | 'bracket'
@@ -118,6 +119,7 @@ export const useGame = create<Store>((set, get) => ({
     const migrated = migrateStaff(g);
     ensureDevelopment(g);
     recordBook(g);
+    playbookState(g);
     if (migrated) g.version = Math.max(g.version, 2);
     set({ game: g, tick: get().tick + 1, screen: 'home', busy: null, modal: null, live: null });
     if (migrated) {

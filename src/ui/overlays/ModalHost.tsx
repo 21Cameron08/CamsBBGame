@@ -15,6 +15,9 @@ import { RECRUIT_ACTIONS, PRIORITY_LABELS, scoutedValue, userOffer, pullOffer, s
 import { nilAvailable } from '../../engine/nil';
 import { ratingColor, teamAccent } from '../color';
 import { OFF_STYLES, DEF_STYLES } from '../screens/Roster';
+import { OFF, DEF, OFF_SCHEMES, DEF_SCHEMES, counterEdge, setUserScheme } from '../../engine/schemes';
+import { schemeOptions } from '../screens/Playbook';
+import type { DefStyle, OffStyle } from '../../engine/types';
 import { statusOf, recruitActWithOdds, OddsRow, OutlookWarnings, YourOdds } from '../screens/Recruiting';
 import { FOCUS_INFO, GOAL_ICON, goalStatus, planOf } from '../../engine/development';
 import { sfx } from '../sound';
@@ -576,10 +579,14 @@ function PregameModal({ gameId }: { gameId: string }) {
           {topOpp.map((p) => <div key={p.id} className="row" style={{ padding: '3px 0' }}><PlayerFace p={p} size={30} team={opp} bg="none" /><span className="small b" style={{ flex: 1 }}>{p.first} {p.last}</span><span className="tiny muted">{p.pos} · {playerPerGame(p).ppg.toFixed(1)} ppg</span><Ovr v={p.ovr} size="sm" /></div>)}
         </Section>
         <Section title="Game Plan">
-          <div className="eyebrow" style={{ marginBottom: 6 }}>Offense</div>
-          <div className="row wrap gap-s">{OFF_STYLES.map((o) => <button key={o.id} className={`btn sm ${s.offense === o.id ? 'primary' : ''}`} onClick={() => mutate((gg) => { gg.teams[userId].strategy.offense = o.id; }, { save: false })}>{o.icon} {o.label}</button>)}</div>
-          <div className="eyebrow" style={{ margin: '12px 0 6px' }}>Defense</div>
-          <div className="row wrap gap-s">{DEF_STYLES.map((o) => <button key={o.id} className={`btn sm ${s.defense === o.id ? 'primary' : ''}`} onClick={() => mutate((gg) => { gg.teams[userId].strategy.defense = o.id; }, { save: false })}>{o.icon} {o.label}</button>)}</div>
+          <div className="eyebrow" style={{ marginBottom: 6 }}>Offense <span className="muted" style={{ textTransform: 'none', letterSpacing: 0 }}>vs their {DEF[opp.strategy.defense].label}</span></div>
+          <select className="select" value={s.offense} onChange={(e) => mutate((gg) => setUserScheme(gg, 'off', e.target.value as OffStyle))}>
+            {schemeOptions(g, 'off', opp.strategy.defense).map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+          </select>
+          <div className="eyebrow" style={{ margin: '12px 0 6px' }}>Defense <span className="muted" style={{ textTransform: 'none', letterSpacing: 0 }}>vs their {OFF[opp.strategy.offense].label}</span></div>
+          <select className="select" value={s.defense} onChange={(e) => mutate((gg) => setUserScheme(gg, 'def', e.target.value as DefStyle))}>
+            {schemeOptions(g, 'def', opp.strategy.offense).map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+          </select>
           <div className="eyebrow" style={{ margin: '12px 0 6px' }}>Tempo</div>
           <div className="seg">{['Grind', 'Patient', 'Normal', 'Fast', 'Blitz'].map((l, i) => <button key={l} className={s.tempo === i + 1 ? 'on' : ''} onClick={() => mutate((gg) => { gg.teams[userId].strategy.tempo = i + 1; }, { save: false })}>{l}</button>)}</div>
           <div className="row" style={{ marginTop: 22 }}>
@@ -604,7 +611,11 @@ function keysToGame(g: GameState, oppId: string): string[] {
   if (avg('hdl') < 58) out.push(`Their guards are loose with the ball — a full-court press could feast.`);
   if (avg('ath') > 68) out.push(`Elite athletes. Control tempo and limit transition chances.`);
   const off = OFF_STYLES.find((o) => o.id === opp.strategy.offense), def = DEF_STYLES.find((o) => o.id === opp.strategy.defense);
-  out.push(`Expect ${off?.label.toLowerCase()} on offense and ${def?.label.toLowerCase()} on defense${opp.strategy.tempo >= 4 ? ', played at a fast pace' : opp.strategy.tempo <= 2 ? ', played at a crawl' : ''}.`);
+  out.unshift(`Expect ${off?.label} on offense and ${def?.label} on defense${opp.strategy.tempo >= 4 ? ', played at a fast pace' : opp.strategy.tempo <= 2 ? ', played at a crawl' : ''}.`);
+  const beat = OFF_SCHEMES.map((o) => ({ o, e: counterEdge(o.id, opp.strategy.defense) })).filter((x) => x.e >= 0.008).sort((a, b) => b.e - a.e).slice(0, 2);
+  if (beat.length) out.splice(1, 0, `Their ${def?.label} is vulnerable to ${beat.map((x) => `${x.o.icon} ${x.o.label}`).join(' and ')}.`);
+  const stop = DEF_SCHEMES.map((d) => ({ d, e: -counterEdge(opp.strategy.offense, d.id) })).filter((x) => x.e >= 0.008).sort((a, b) => b.e - a.e).slice(0, 2);
+  if (stop.length) out.splice(2, 0, `${stop.map((x) => `${x.d.icon} ${x.d.label}`).join(' or ')} can slow their ${off?.label}.`);
   const hurt = teamPlayers(g, oppId).filter((p) => p.injury && p.ovr >= 65);
   if (hurt.length) out.push(`Injury report: ${hurt.map((p) => `${p.first} ${p.last} (out)`).join(', ')}.`);
   return out.slice(0, 5);

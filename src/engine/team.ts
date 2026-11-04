@@ -5,6 +5,7 @@ import type { SimTeamSetup } from './sim';
 import type { ConferenceDef } from '../data/types';
 import { staffEffects } from './staff';
 import { practiceMods } from './development';
+import { chooseSchemes, playbookState } from './schemes';
 
 export const ROSTER_MAX = 15;
 export const ROSTER_MIN = 12;
@@ -48,24 +49,12 @@ export function nilCommitted(state: GameState, teamId: string): number {
 }
 
 export function autoStrategy(players: Player[], coach?: Coach): Strategy {
-  const avail = players.filter((p) => !p.injury).sort((a, b) => b.ovr - a.ovr).slice(0, 8);
-  const avg = (k: keyof Player['ratings']) => avail.reduce((s, p) => s + p.ratings[k], 0) / Math.max(1, avail.length);
-  const tp = avg('tp'), ins = avg('ins'), spd = avg('spd'), perD = avg('perD'), stl = avg('stl'), ath = avg('ath'), pas = avg('pas');
-  let offense: OffStyle = 'balanced';
-  const bigIns = avail.filter((p) => p.pos === 'C' || p.pos === 'PF').reduce((m, p) => Math.max(m, p.ratings.ins), 0);
-  if (tp - ins > 6) offense = 'three';
-  else if (bigIns > 76 && bigIns - tp > 10) offense = 'post';
-  else if (spd + ath > ins + tp + 8) offense = 'pace';
-  else if (pas > 64) offense = 'motion';
-  else if (ins > tp + 4) offense = 'drive';
-  let defense: DefStyle = 'man';
-  if (stl + spd > 140 && rng.chance(0.5)) defense = 'press';
-  else if (perD < 58 && rng.chance(0.5)) defense = 'zone';
-  else if (rng.chance(0.25)) defense = 'packline';
-  else if (rng.chance(0.15)) defense = 'switch';
-  const tempo = offense === 'pace' || defense === 'press' ? rng.int(4, 5) : offense === 'post' ? rng.int(1, 3) : rng.int(2, 4);
-  void coach;
-  return { offense, defense, tempo, starters: [], rotation: defense === 'press' ? 10 : 9 };
+  const pick = chooseSchemes(players, coach?.id, () => rng.range(0, 1));
+  const fast = pick.offense === 'pace' || pick.defense === 'press' || pick.defense === 'zone131';
+  const slow = pick.offense === 'princeton' || (pick.offense === 'post' && pick.defense === 'packline');
+  const tempo = fast ? rng.int(4, 5) : slow ? rng.int(2, 3) : rng.int(2, 4);
+  const deep = pick.defense === 'press' || pick.defense === 'pressure' || pick.offense === 'pace';
+  return { ...pick, tempo, starters: [], rotation: deep ? 10 : 9 };
 }
 
 export function assignNumbers(state: GameState, team: Team) {
@@ -84,7 +73,7 @@ export function assignNumbers(state: GameState, team: Team) {
 export function simSetup(state: GameState, team: Team): SimTeamSetup {
   const coach = state.coaches[team.coachId];
   const players = teamPlayers(state, team.id).filter((p) => !p.injury && !p.redshirting);
-  const base = {
+  const base: SimTeamSetup = {
     id: team.id,
     abbr: team.abbr,
     name: team.school,
@@ -94,6 +83,8 @@ export function simSetup(state: GameState, team: Team): SimTeamSetup {
     coachMotivation: coach ? coach.skills.motivation : 5,
   };
   if (team.id !== state.user.teamId) return base;
+  const pb = playbookState(state);
+  base.fam = { off: pb.off, def: pb.def };
   const pm = practiceMods(state);
   if (!state.staff) return { ...base, coachTactics: base.coachTactics + pm.tactics, staminaMul: pm.stamina };
   const e = staffEffects(state);

@@ -76,8 +76,21 @@ Production build: `npm run build`, then `npm run preview` (or host the `dist/` f
 
 ### 🏀 The game engine
 - A **possession-by-possession simulation**, tuned to real D-I averages: about 72 PPG, about 35% from three, about 67 possessions per game, realistic upset rates.
-- **Offensive systems**: Balanced, Motion, Pace & Space, Inside-Out, Dribble Drive, Bombs Away.
-- **Defensive schemes**: Man, Pack Line, 2-3 Zone, Full-Court Press, Switch Everything.
+- **The Playbook**: 10 offenses and 9 defenses, each with its own strengths, weaknesses and personnel needs.
+  - **Offenses**: Balanced, Motion, Pace & Space, Inside-Out, Dribble Drive, Five-Out Bombs, Princeton, Flex, Spread Pick-and-Roll, Star Iso.
+  - **Defenses**: Man-to-Man, Pack Line, 2-3 Zone, 1-3-1 Trap, Matchup Zone, Full-Court Press, Switch Everything, Denial Man, Box-and-One.
+  - **Personnel fit (0–100)** measures how your roster's strengths suit each scheme, compared to its own talent level, so even a smaller program can be a perfect fit. Each scheme explains your fit, e.g. "Bigs who can pass" or "2.5 knockdown shooters". A great fit is worth a few points a game, and a bad one costs you.
+  - **Installation**: your players have to learn a system.
+    - A change in the offseason is installed by tip-off.
+    - Switching mid-season starts it partly installed and costs points until practice catches up. Game Prep weeks and your Tactics skill speed it up.
+  - **Counters**: certain schemes beat others. Some examples:
+    - Box-and-One smothers Star Iso.
+    - Inside-Out feasts on Switch Everything.
+    - Princeton burns Denial Man.
+    - Five-Out shoots over Pack Line and zones.
+    - The Next Opponent card and the pregame report show your edges and suggest counters.
+  - **Coaching tendencies**: offensive rebounding (crash vs. get back), shot profile (paint vs. threes), ball pressure and help defense, plus a **go-to scorer**.
+  - AI coaches choose schemes that fit their rosters and their own preferences, so every program plays differently.
 - You also control tempo, rotation depth and the starting five.
 - Fatigue, foul trouble, intentional fouling late, clutch shooters, home crowds, momentum runs, overtime and buzzer beaters are all modeled.
 - **Live game view**:
@@ -242,6 +255,7 @@ src/
   data/        Static data: 2026-27 conferences, 365 teams, rivalries, name pools, hometowns
   engine/      Pure TypeScript game logic (no React)
     sim.ts         possession-based game engine (fast + live play-by-play modes)
+    schemes.ts     the playbook: offensive/defensive schemes, roster fit, counters, installation, AI scheme choice
     season.ts      daily/weekly loop, results, polls, recruiting ticks, events
     schedule.ts    non-conference + conference schedule generation, MTEs, rivalries
     rankings.ts    SRS/NET ratings, WAB, AP poll, NCAA field selection & seeding

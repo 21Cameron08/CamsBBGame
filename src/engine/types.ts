@@ -99,8 +99,8 @@ export interface Player {
   awards: string[];
 }
 
-export type OffStyle = 'balanced' | 'motion' | 'pace' | 'post' | 'drive' | 'three';
-export type DefStyle = 'man' | 'packline' | 'zone' | 'press' | 'switch';
+export type OffStyle = 'balanced' | 'motion' | 'pace' | 'post' | 'drive' | 'three' | 'princeton' | 'flex' | 'pnr' | 'iso';
+export type DefStyle = 'man' | 'packline' | 'zone' | 'press' | 'switch' | 'zone131' | 'matchup' | 'pressure' | 'boxone';
 export interface Strategy {
   offense: OffStyle;
   defense: DefStyle;
@@ -110,6 +110,23 @@ export interface Strategy {
   starters: string[];
   /** rotation size 7..11 */
   rotation: number;
+  /** coaching tendencies, each -2..2 (0 = neutral) */
+  /** crash the offensive glass (+) or get back in transition (-) */
+  crash?: number;
+  /** hunt threes (+) or attack the paint (-) */
+  shotProfile?: number;
+  /** ball pressure on defense (+) or sit back (-) */
+  pressure?: number;
+  /** pack the paint (+) or run shooters off the line (-) */
+  help?: number;
+  /** go-to scorer (player id) */
+  goTo?: string | null;
+}
+
+/** How well the user's team knows each scheme (0-100) */
+export interface PlaybookState {
+  off: Partial<Record<OffStyle, number>>;
+  def: Partial<Record<DefStyle, number>>;
 }
 
 export interface TeamRecord {
@@ -686,6 +703,8 @@ export interface GameState {
   offseason: OffseasonState | null;
   /** user's coaching staff (added in save v2; migrated on load) */
   staff?: StaffState;
+  /** scheme familiarity for the user's team (created on first use) */
+  playbook?: PlaybookState;
   /** league and program record books (created on first use) */
   records?: RecordBook;
   /** player development: plans, practice, goals (created on first use) */
