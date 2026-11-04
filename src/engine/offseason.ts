@@ -20,6 +20,7 @@ import { openPortal, advancePortalDay } from './portal';
 import { beginSummer, summerDone, runSummer, evaluateGoals, devNewSeason } from './development';
 import { recordSeasonEnd, trackProgram } from './records';
 import { seasonInstallReset, resetPlaybook } from './schemes';
+import { retireJerseys, jerseyNights } from './legacy';
 
 const NCAA_BONUS: Record<string, number> = { Champion: 30, 'Runner-up': 22, 'Final Four': 18, 'Elite Eight': 12, 'Sweet 16': 8, 'Round of 32': 4, 'Round of 64': 1, 'First Four': 0.5 };
 
@@ -313,6 +314,7 @@ export function doDeclarations(state: GameState) {
       if (rng.chance(prob * (p.traits.includes('loyal') ? 0.7 : 1) * (nilSatisfaction(state, p) > 1.2 ? 0.75 : 1))) os.declared.push(p.id);
     }
   }
+  retireJerseys(state, [...os.graduating, ...os.declared]);
   // news
   for (const id of os.declared.slice(0, 200)) {
     const p = state.players[id];
@@ -451,6 +453,7 @@ export function newSeason(state: GameState) {
   state.schedule = [];
   state.news = state.news.slice(0, 150);
   state.social = state.social.slice(0, 100);
+  jerseyNights(state);
   state.inbox = state.inbox.filter((i) => !i.resolved).slice(0, 10);
   for (const c of Object.values(state.coaches)) if (!c.isUser) c.contractYears = Math.max(0, c.contractYears - 1);
   const ucoach = state.coaches[state.user.coachId];

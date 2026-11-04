@@ -50,3 +50,11 @@ export function ratingColor(v: number): string {
   if (v >= 55) return '#f29b38';
   return '#f0605a';
 }
+/** The preferred color for text on `bg` if it reads clearly, else black or white */
+export function inkOn(bg: string, preferred: string): string {
+  const a = luminance(bg), b = luminance(preferred);
+  const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  if (ratio >= 3) return preferred;
+  // whichever of near-black or white reads better
+  return (a + 0.05) / (luminance('#0b0f17') + 0.05) > 1.05 / (a + 0.05) ? '#0b0f17' : '#ffffff';
+}

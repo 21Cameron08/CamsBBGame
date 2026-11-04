@@ -250,7 +250,7 @@ export function LiveGame({ live }: { live: LiveSession }) {
                   style={{ display: 'flex', gap: 8, padding: '6px 4px', borderBottom: '1px solid var(--line)', fontSize: 12.5, background: e.big ? 'rgba(255,255,255,.04)' : undefined }}>
                   <span className="mono dim" style={{ width: 36, flex: 'none' }}>{e.clock}</span>
                   <span style={{ width: 4, borderRadius: 2, flex: 'none', background: e.team === -1 ? 'var(--line-2)' : colors[e.team] }} />
-                  <span style={{ flex: 1, fontWeight: e.big || e.kind === 'make' ? 700 : 400, color: e.kind === 'period' || e.kind === 'final' ? 'var(--gold)' : e.kind === 'sub' || e.kind === 'media' ? 'var(--muted)' : undefined }}>{e.text}</span>
+                  <span style={{ flex: 1, fontWeight: e.big || e.kind === 'make' ? 700 : 400, fontStyle: e.flavor ? 'italic' : undefined, color: e.flavor ? 'var(--accent)' : e.kind === 'period' || e.kind === 'final' ? 'var(--gold)' : e.kind === 'sub' || e.kind === 'media' ? 'var(--muted)' : undefined }}>{e.flavor ? `🎙️ ${e.text}` : e.text}</span>
                   {(e.kind === 'make' || e.kind === 'ft') && <span className="mono b" style={{ flex: 'none' }}>{e.score[1]}-{e.score[0]}</span>}
                 </motion.div>
               ))}

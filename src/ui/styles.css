@@ -433,3 +433,10 @@ input[type='range'] { accent-color: var(--accent); width: 100%; }
 .pb-match { padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); }
 .linkish { border: 0; background: none; color: var(--accent); cursor: pointer; padding: 0; font: inherit; text-decoration: underline; }
 @media (max-width: 1200px) { .pb-wrap { grid-template-columns: 1fr; } }
+
+/* ---------- Program lore / Ring of Honor ---------- */
+.lore-identity { padding: 14px 16px; border-left: 3px solid var(--accent); border-radius: 0 12px 12px 0; background: rgba(255, 255, 255, 0.035); }
+.legend-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.legend-card { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); transition: background .15s; }
+.legend-card:hover { background: rgba(255, 255, 255, 0.07); }
+.lore-crowd { font-style: italic; color: rgba(255, 255, 255, 0.82); }

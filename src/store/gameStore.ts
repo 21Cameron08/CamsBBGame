@@ -15,6 +15,7 @@ import { migratePortal } from '../engine/portal';
 import { ensureDevelopment } from '../engine/development';
 import { recordBook } from '../engine/records';
 import { playbookState } from '../engine/schemes';
+import { loreOf } from '../data/lore';
 
 export type Screen =
   | 'home' | 'roster' | 'staff' | 'schedule' | 'recruiting' | 'portal' | 'nil' | 'rankings' | 'standings' | 'bracket'
@@ -186,6 +187,7 @@ export const useGame = create<Store>((set, get) => ({
     const rv = isRivalry(game.home, game.away);
     const sim = new GameSim(simSetup(g, home), simSetup(g, away), {
       neutral: game.neutral, pbp: true, crowd: clamp(home.hype / 100 + (rv ? 0.25 : 0), 0, 1), tourney: game.type === 'ncaa',
+      flavor: (() => { const l = loreOf(home.id); return l ? { crowd: l.crowd, closer: l.closer } : undefined; })(),
     });
     const userSide = game.home === g.user.teamId ? 0 : 1;
     sim.userTeam = userSide;

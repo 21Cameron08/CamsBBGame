@@ -4,6 +4,7 @@ import { useGame } from '../../store/gameStore';
 import { TeamLogo, Stars, GeneratedBadge, fmtMoneyShort } from '../components/common';
 import { Face, FACE_EDITOR_FIELDS, randomizeFace, cycleFaceField, type FaceConfig } from '../face';
 import { TEAMS } from '../../data/teams';
+import { loreOf } from '../../data/lore';
 import { CONFERENCES } from '../../data/conferences';
 import type { TeamDef } from '../../data/types';
 import type { CoachArchetype, Settings } from '../../engine/types';
@@ -290,7 +291,7 @@ function NewDynasty({ onBack }: { onBack: () => void }) {
                       </div>
                       <div className="row" style={{ marginTop: 8, justifyContent: 'space-between' }}>
                         <Stars n={Math.max(1, Math.round(t.prestige / 20))} />
-                        <span className="tiny muted">{t.state}</span>
+                        <span className="tiny muted">{loreOf(t.id)?.titles?.length ? <span style={{ color: 'var(--gold)' }}>🏆 {loreOf(t.id)!.titles!.length} · </span> : null}{t.state}</span>
                       </div>
                     </motion.div>
                   );
@@ -340,6 +341,8 @@ function NewDynasty({ onBack }: { onBack: () => void }) {
 function SchoolPanel({ team, onNext }: { team: TeamDef; onNext: () => void }) {
   const conf = CONFERENCES.find((c) => c.id === team.conf);
   const tag = difficultyTag(team.prestige);
+  const lore = loreOf(team.id);
+  const titles = lore?.titles ?? [];
   return (
     <div style={{ position: 'sticky', top: 20 }}>
       <>
@@ -350,6 +353,7 @@ function SchoolPanel({ team, onNext }: { team: TeamDef; onNext: () => void }) {
             </motion.div>
             <div className="h2" style={{ marginTop: 10 }}>{team.school}</div>
             <div className="muted">{team.mascot} · {team.city}, {team.state}</div>
+            {lore && <div className="small" style={{ marginTop: 10, fontStyle: 'italic', opacity: 0.88, lineHeight: 1.35 }}>{lore.identity}</div>}
           </div>
           <div style={{ padding: 18 }}>
             <div className="row" style={{ justifyContent: 'space-between', marginBottom: 10 }}>
@@ -360,7 +364,9 @@ function SchoolPanel({ team, onNext }: { team: TeamDef; onNext: () => void }) {
             <div className="kv small">
               <span>Conference</span><span>{conf?.name}</span>
               <span>Prestige</span><span>{Math.round(team.prestige)}/100</span>
-              <span>Arena</span><span>{team.arena}</span>
+              <span>Arena</span><span>{team.arena}{lore?.arenaNick ? ` (${lore.arenaNick})` : ''}</span>
+              {titles.length > 0 && <><span>Natl titles</span><span style={{ color: 'var(--gold)' }}>{titles.length} · last in {titles[titles.length - 1]}</span></>}
+              {(lore?.students || lore?.fans) && <><span>{lore.students ? 'Students' : 'Fans'}</span><span>{lore.students ?? lore.fans}</span></>}
               <span>NIL pool</span><span>~{fmtMoneyShort(nilBudgetFor(team, conf))}</span>
               <span>Market</span><span>{'●'.repeat(Math.round(team.market / 2))}<span className="dim">{'●'.repeat(5 - Math.round(team.market / 2))}</span></span>
               <span>Academics</span><span>{'●'.repeat(Math.round(team.academics / 2))}<span className="dim">{'●'.repeat(5 - Math.round(team.academics / 2))}</span></span>

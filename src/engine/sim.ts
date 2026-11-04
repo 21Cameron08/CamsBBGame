@@ -49,6 +49,8 @@ export interface SimOptions {
   gameId?: string;
   /** stakes: elevates clutch behaviour */
   tourney?: boolean;
+  /** home-arena color for the play-by-play (program lore) */
+  flavor?: { crowd?: string; closer?: string };
 }
 
 export type PlayKind =
@@ -68,6 +70,8 @@ export interface PlayEvent {
   shot?: { x: number; y: number; made: boolean; three: boolean };
   score: [number, number];
   big?: boolean;
+  /** broadcast color (crowd, tradition), not a play */
+  flavor?: boolean;
 }
 
 interface SP {
@@ -180,6 +184,8 @@ export class GameSim {
   readonly pbp: boolean;
   readonly crowd: number;
   readonly tourney: boolean;
+  readonly flavor: SimOptions['flavor'];
+  private closerSaid = false;
   t = 0;
   period = 1;
   periodEnd = HALF;
@@ -214,6 +220,7 @@ export class GameSim {
     this.pbp = !!opts.pbp;
     this.crowd = opts.crowd ?? 0.5;
     this.tourney = !!opts.tourney;
+    this.flavor = this.neutral ? undefined : opts.flavor;
     this.strategy = [{ ...home.strategy }, { ...away.strategy }];
     this.sp = [this.buildTeam(0), this.buildTeam(1)];
     this.mods = [this.computeMods(0), this.computeMods(1)];
@@ -327,6 +334,7 @@ export class GameSim {
     if (!this.started) {
       this.started = true;
       const w = this.poss;
+      if (this.flavor?.crowd) this.emit(-1, 'media', this.flavor.crowd, { flavor: true });
       this.emit(-1, 'jump', `Tip-off! ${this.setups[w].abbr} wins the opening tip.`);
     }
     this.possession();
@@ -882,6 +890,11 @@ export class GameSim {
   private afterPossession() {
     // track lead change flair
     this.poss = (1 - this.poss) as 0 | 1;
+    // the home crowd's signature send-off when the game is in hand
+    if (this.flavor?.closer && !this.closerSaid && this.period === 2 && this.t >= REG - 180 && this.t < REG - 5 && this.score[0] - this.score[1] >= 12) {
+      this.closerSaid = true;
+      this.emit(-1, 'media', this.flavor.closer, { flavor: true });
+    }
     if (this.t >= this.periodEnd - 1) {
       this.endPeriod();
     }

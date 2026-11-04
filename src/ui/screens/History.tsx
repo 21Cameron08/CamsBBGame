@@ -5,6 +5,9 @@ import { useGame, useGameState } from '../../store/gameStore';
 import { TeamLogo, TeamName, Section, Empty, CoachFace, TeamHeroBg } from '../components/common';
 import type { GameState, Team, Trophy } from '../../engine/types';
 import { seasonLabel } from '../../engine/calendar';
+import { inkOn } from '../color';
+import { loreOf, preDynastyTitles } from '../../engine/legacy';
+import { ProgramStory, RingOfHonor } from '../components/Legacy';
 
 const TROPHY_ICON: Record<Trophy['kind'], string> = { natl: '🏆', f4: '🥇', e8: '🎖️', s16: '🏅', conf: '🏟️', ctourn: '✂️', coy: '🧢' };
 
@@ -20,6 +23,7 @@ interface BannerDef { key: string; season: number; title: string; sub: string; b
 
 function Banner({ team, b, i }: { team: Team; b: BannerDef; i: number }) {
   const [p, s] = team.colors;
+  const ink = inkOn(p, s);
   const w = b.big ? 118 : 96, h = b.big ? 170 : 140;
   return (
     <motion.div initial={{ y: -60, opacity: 0, rotate: -4 }} animate={{ y: 0, opacity: 1, rotate: 0 }} transition={{ delay: i * 0.08, type: 'spring', stiffness: 120, damping: 11 }}
@@ -31,9 +35,9 @@ function Banner({ team, b, i }: { team: Team; b: BannerDef; i: number }) {
           <rect x="2" y="12" width={w - 4} height="8" rx="2" fill="#2b2f38" />
           <path d={`M4 18 H${w - 4} V${h - 10} L${w / 2} ${h + 10} L4 ${h - 10} Z`} fill={p} stroke={s} strokeWidth="3" />
           <path d={`M10 24 H${w - 10} V${h - 14} L${w / 2} ${h + 2} L10 ${h - 14} Z`} fill="none" stroke={s} strokeOpacity=".45" strokeWidth="1.2" />
-          <text x={w / 2} y={b.big ? 62 : 54} textAnchor="middle" fill={s} fontFamily="var(--font-display)" fontWeight="900" fontSize={b.big ? 24 : 19} letterSpacing="1">{b.season + 1}</text>
+          <text x={w / 2} y={b.big ? 62 : 54} textAnchor="middle" fill={ink} fontFamily="var(--font-display)" fontWeight="900" fontSize={b.big ? 24 : 19} letterSpacing="1">{b.season + 1}</text>
           <foreignObject x="8" y={b.big ? 70 : 62} width={w - 16} height={h - (b.big ? 80 : 70)}>
-            <div style={{ color: s, fontFamily: 'var(--font-display)', fontWeight: 800, textTransform: 'uppercase', textAlign: 'center', fontSize: b.big ? 14 : 11.5, lineHeight: 1.05, letterSpacing: '.04em' }}>
+            <div style={{ color: ink, fontFamily: 'var(--font-display)', fontWeight: 800, textTransform: 'uppercase', textAlign: 'center', fontSize: b.big ? 14 : 11.5, lineHeight: 1.05, letterSpacing: '.04em' }}>
               {b.title}
               <div style={{ fontSize: b.big ? 10 : 9, opacity: 0.8, marginTop: 4, fontWeight: 700 }}>{b.sub}</div>
             </div>
@@ -51,8 +55,11 @@ export function HistoryScreen() {
   const coach = g.coaches[g.user.coachId];
   const conf = g.conferences.find((c) => c.id === team.conf);
 
+  const lore = loreOf(team.id);
+  const preTitles = preDynastyTitles(team.id);
   const banners = useMemo<BannerDef[]>(() => {
-    const out: BannerDef[] = [];
+    // titles won before the dynasty began (Banner shows season + 1 as the year)
+    const out: BannerDef[] = preTitles.map((y) => ({ key: `p${y}`, season: y - 1, title: 'National Champions', sub: 'NCAA Tournament', big: true }));
     for (const h of team.history) {
       if (h.postseason === 'Champion') out.push({ key: `n${h.season}`, season: h.season, title: 'National Champions', sub: `${h.w}-${h.l}`, big: true });
       else if (h.postseason === 'Runner-up' || h.postseason === 'Final Four') out.push({ key: `f${h.season}`, season: h.season, title: 'Final Four', sub: h.postseason === 'Runner-up' ? 'National Runner-up' : `${h.w}-${h.l}`, big: false });
@@ -60,7 +67,7 @@ export function HistoryScreen() {
       if (h.confTourneyChamp) out.push({ key: `t${h.season}`, season: h.season, title: `${conf?.short ?? ''} Tournament`, sub: 'Champions', big: false });
     }
     return out.sort((a, b) => a.season - b.season || (b.big ? 1 : 0) - (a.big ? 1 : 0));
-  }, [team.history, team.history.length, conf?.short]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [team.history, team.history.length, conf?.short, team.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totals = useMemo(() => {
     const t = { w: 0, l: 0, ncaa: 0, s16: 0, f4: 0, titles: 0 };
@@ -96,14 +103,15 @@ export function HistoryScreen() {
               {[
                 ['Record', `${totals.w}-${totals.l}`],
                 ['NCAA Bids', totals.ncaa],
-                ['Titles', totals.titles],
+                ['Natl Titles', totals.titles + preTitles.length, preTitles.length ? `${preTitles.length} before the dynasty` : ''],
                 ['Sweet 16s', totals.s16],
                 ['Final Fours', totals.f4],
                 ['Draft Picks', myPicks.length],
-              ].map(([l, v]) => (
-                <div key={String(l)} className="stat-tile" style={{ padding: '10px 12px', background: 'rgba(0,0,0,.28)' }}>
+              ].map(([l, v, sub]) => (
+                <div key={String(l)} className="stat-tile" style={{ padding: '10px 12px', background: 'rgba(0,0,0,.28)' }} title={sub ? String(sub) : undefined}>
                   <div className="l">{l}</div>
                   <div className="v" style={{ fontSize: 24 }}>{v}</div>
+                  {sub ? <div className="tiny muted" style={{ marginTop: 3 }}>{sub}</div> : null}
                 </div>
               ))}
             </div>
@@ -114,11 +122,14 @@ export function HistoryScreen() {
           {banners.length === 0
             ? <div className="small muted" style={{ padding: '18px 0' }}>The rafters are empty. Win a conference title or make a Final Four to raise your first banner.</div>
             : <div className="row" style={{ gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>{banners.map((b, i) => <Banner key={b.key} team={team} b={b} i={i} />)}</div>}
+          <div className="eyebrow" style={{ margin: '18px 0 8px' }}>Ring of Honor · Retired Jerseys</div>
+          <RingOfHonor g={g} team={team} />
         </div>
       </div>
 
       <div className="grid g-main" style={{ alignItems: 'start' }}>
         <div className="col" style={{ gap: 16 }}>
+          {lore && <Section title="Program Story"><ProgramStory g={g} team={team} showRing={false} showTitles={false} /></Section>}
           <div className="card flush">
             <div className="card-head" style={{ padding: '16px 18px 0' }}><div className="h3">Season by Season</div></div>
             {team.history.length === 0

@@ -703,6 +703,8 @@ export interface GameState {
   offseason: OffseasonState | null;
   /** user's coaching staff (added in save v2; migrated on load) */
   staff?: StaffState;
+  /** jerseys retired during the dynasty (created on first use) */
+  legacy?: { retired: Record<string, RetiredJersey[]> };
   /** scheme familiarity for the user's team (created on first use) */
   playbook?: PlaybookState;
   /** league and program record books (created on first use) */
@@ -903,4 +905,17 @@ export interface RecordBook {
   tracked: string[];
   /** recent record-breaking moments (for news and the press) */
   recent: RecordBreak[];
+}
+
+/** A jersey retired during the dynasty */
+export interface RetiredJersey {
+  playerId: string;
+  name: string;
+  num: number;
+  pos: Pos;
+  /** seasons at the school, e.g. '2026–30' */
+  years: string;
+  why: string;
+  /** season it was retired */
+  season: number;
 }

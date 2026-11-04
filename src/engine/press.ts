@@ -14,6 +14,7 @@ import { seasonLabel } from './calendar';
 import { classRankings } from './recruiting';
 import { FOCUS_INFO } from './development';
 import { recordsInGame, GAME_CATS, TEAM_GAME_CATS, fmtRec } from './records';
+import { loreOf, ringOfHonor, retiredJerseys } from './legacy';
 
 type Tone = PressQuestion['answers'][number]['tone'];
 type Answer = PressQuestion['answers'][number];
@@ -216,6 +217,84 @@ function postseasonPhrase(h: TeamSeasonHistory) {
 }
 const DEEP = ['Final Four', 'Runner-up', 'Champion'];
 
+// ---------------- Program lore ----------------
+/** Questions about the program's history, crowd and legends (only programs with real lore get tradition questions) */
+function loreCands(state: GameState, c: Ctx, kind: 'intro' | 'md'): Cand[] {
+  const { team } = c;
+  const lore = loreOf(team.id);
+  const out: Cand[] = [];
+  const dyn = state.champions.filter((x) => x.teamId === team.id).map((x) => x.season + 1);
+  const titles = [...(lore?.titles ?? []), ...dyn].sort((a, b) => a - b);
+  const lastTitle = titles[titles.length - 1];
+  const nowYear = state.season + 1;
+
+  if (titles.length) {
+    const drought = nowYear - lastTitle;
+    out.push({
+      key: `${kind}.lore.titles`, topic: 'tradition', w: kind === 'intro' ? 9 : 5, lead: kind === 'intro',
+      build: () => makeQ(team, { role: kind === 'intro' ? 'columnist' : 'national', tag: 'Program history' }, kind === 'intro'
+        ? v(`${team.school} has ${plural(titles.length, 'national championship')}. Some coaches call that kind of history a burden. Is it?`, `There are ${plural(titles.length, 'national title banner')} hanging in ${team.arena}. How do you live up to that?`)
+        : drought >= 15
+          ? `${team.school}'s last national title came in ${lastTitle}. That's ${drought} years. Is this the team that ends the wait?`
+          : drought <= 2
+            ? `This program won it all in ${lastTitle}. How do you keep the standard from slipping?`
+            : v(`${plural(titles.length, 'national championship banner')} hang in this building. Does this group have what it takes to add another?`, `The last banner went up in ${lastTitle}. What's missing between this team and the next one?`), [
+        A('confident', kind === 'intro' ? `It's the reason I took the job. You come here to hang banners, and that's what we're going to do.` : `We have the pieces. I expect us to be playing on the last weekend.`, [{ kind: 'hype', delta: 6 }, { kind: 'recruitInterest', delta: 2 }, { kind: 'security', delta: -2 }], { kind: 'deepRun' }),
+        A('humble', `Those banners were earned by great teams. Nobody hands you one. We have to earn our own.`, [{ kind: 'mediaRep', delta: 3 }, { kind: 'security', delta: 2 }]),
+        A('praise', `That's why you come to ${team.school}. You don't run from that history. You embrace it, and you show it to every recruit who walks in.`, [{ kind: 'hype', delta: 3 }, { kind: 'recruitInterest', delta: 3 }]),
+      ]),
+    });
+  }
+
+  const crowd = lore?.students ? `the ${lore.students}` : lore?.fans ?? (lore?.arenaNick ? `the crowd at ${lore.arenaNick}` : undefined);
+  if (lore && crowd) {
+    const place = lore.arenaNick ?? team.arena;
+    out.push({
+      key: `${kind}.lore.crowd`, topic: 'crowd', w: kind === 'intro' ? 6 : 4,
+      build: () => makeQ(team, { role: kind === 'intro' ? 'tv' : 'student' }, kind === 'intro'
+        ? `What's your message to ${crowd}?`
+        : v(`What does ${crowd} mean for this team on a big night?`, `Opponents talk about how hard it is to play in ${place}. Is that a real advantage?`), [
+        A('praise', `They're the best in the country, and they're worth points every night. We feel them.`, [{ kind: 'hype', delta: 5 }, { kind: 'mediaRep', delta: 2 }]),
+        A('joke', `I've told our guys: if you can't get fired up in ${place}, check your pulse.`, [{ kind: 'hype', delta: 3 }, { kind: 'mediaRep', delta: 3 }]),
+        A('confident', kind === 'intro' ? `Fill it up. We're going to give you a team worth screaming for.` : `It's a fortress, and we intend to keep it that way.`, [{ kind: 'hype', delta: 6 }, { kind: 'morale', target: 'team', delta: 2 }]),
+      ]),
+    });
+  }
+
+  if (kind === 'md') {
+    // a jersey retired from the team the user coached goes up this season
+    const fresh = retiredJerseys(state, team.id).filter((r) => r.season === state.season - 1).pop();
+    const coachedHim = fresh && state.players[fresh.playerId]?.career.some((l) => l.teamId === team.id && state.coaches[state.user.coachId].career.some((cc) => cc.teamId === team.id && cc.season === l.season));
+    if (fresh) {
+      out.push({
+        key: 'md.lore.retire', topic: 'legend', w: coachedHim ? 10 : 6, lead: !!coachedHim,
+        build: () => makeQ(team, { role: 'beat', tag: 'Ring of Honor' }, coachedHim
+          ? `${fresh.name}'s No. ${fresh.num} goes up in the rafters this season. What will that night mean to you?`
+          : `${fresh.name}'s No. ${fresh.num} is being retired this season. What does a player like that mean to a program?`, [
+          A('praise', `He gave everything to this place. Seeing that jersey up there is going to be emotional for all of us.`, [{ kind: 'mediaRep', delta: 4 }, { kind: 'hype', delta: 3 }]),
+          A('confident', `Every recruit who walks in is going to look up and see what's possible here.`, [{ kind: 'recruitInterest', delta: 4 }, { kind: 'hype', delta: 2 }]),
+          A('joke', `I told him if he wants it to stay up there, he has to come back and guard our scout team.`, [{ kind: 'hype', delta: 3 }, { kind: 'mediaRep', delta: 3 }]),
+        ]),
+      });
+    } else {
+      const legends = ringOfHonor(state, team.id);
+      if (legends.length && c.star) {
+        const leg = rng.pick(legends);
+        const star = c.star;
+        out.push({
+          key: 'md.lore.legend', topic: 'legend', w: 4,
+          build: () => makeQ(team, { role: 'columnist', tag: 'Ring of Honor' }, `${leg.name}${leg.nickname ? ` ("${leg.nickname}")` : ''} wore No. ${leg.num} here in ${leg.era}, and it hangs in the rafters now. Does this roster have anyone who could join him?`, [
+            A('confident', `${nm(star)} has that kind of talent. If he keeps working, I wouldn't bet against it.`, [{ kind: 'morale', target: star.id, delta: 6 }, { kind: 'hype', delta: 3 }], { kind: 'allAmerican', subject: star.id }),
+            A('humble', `Those jerseys take years to earn. Nobody gets up there on talent alone.`, [{ kind: 'mediaRep', delta: 3 }, { kind: 'morale', target: 'team', delta: 1 }]),
+            A('praise', `Guys like ${leg.name.split(' ')[1] ?? leg.name} built this place. Our players know the history, and they know what's expected.`, [{ kind: 'hype', delta: 2 }, { kind: 'recruitInterest', delta: 2 }]),
+          ]),
+        });
+      }
+    }
+  }
+  return out;
+}
+
 // ======================================================================
 // Introductory press conference
 // ======================================================================
@@ -358,6 +437,8 @@ export function introPresser(state: GameState, opts: { fromTeamId?: string; fire
       A('humble', `We'll fit the system to our players, not the other way around.`, [{ kind: 'morale', target: 'team', delta: 3 }]),
     ]),
   });
+  cands.push(...loreCands(state, c, 'intro'));
+
   return { id: rng.id('pc'), title: 'Introductory Press Conference', context: `You are introduced as the new head coach of ${team.school}. The cameras are rolling.`, when: 'at your introductory press conference', questions: choose(state, cands, 4) };
 }
 
@@ -692,6 +773,7 @@ export function mediaDayPresser(state: GameState): PressConference {
     ]),
   });
   cands.push(funQuestion(state, team, 'md'));
+  cands.push(...loreCands(state, c, 'md'));
 
   // ---- holding him to last season's promises ----
   const portalClaim = openClaims(state, ['portalSplash', 'retention'], (x) => x.teamId === team.id && x.season === state.season)[0];

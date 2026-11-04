@@ -211,6 +211,15 @@ Production build: `npm run build`, then `npm run preview` (or host the `dist/` f
   - your Selection Sunday press conference follows the show
 - **Awards**: National POY, All-American teams, Freshman of the Year, DPOY, Coach of the Year, conference POYs, Final Four MOP.
 - **Program history**: championship banners, a season-by-season table, a trophy case, award winners and draft picks.
+- **Program lore** for **71 of the best-known programs** (blue bloods, the big conferences, famous Cinderellas):
+  - real traditions, fan bases, student sections and arena nicknames, plus each program's national titles through the 2025–26 season. No real players are named.
+  - pre-dynasty title banners hang in your rafters from day one, and the History screen and Team page count every title
+  - a **Ring of Honor** of fictional legends for each of these programs, with jerseys, eras, nicknames and a line about each
+  - home crowds get a broadcast line at tip-off in the pregame and the play-by-play, and a signature send-off when the home team has a game in hand (the Rock Chalk Chant in Lawrence, "C-A-T-S! Cats! Cats! Cats!" at Rupp, the Gator Chomp, and more)
+  - media-day and introductory press questions about the program's titles, its crowd and its legends
+  - the team picker shows each program's identity and title count, and your recruiting pitch sells your titles, your building and your retired jerseys
+  - other schools have no generated lore yet; their story is whatever your dynasty writes
+- **Retired jerseys at any school**: when a great player leaves, his school retires his number. A National Player of the Year or a two-time First Team All-American always goes up. Anyone else needs two strong claims (an All-American year, starring for a national champion, Final Four MOP, two conference POYs, or 2,300 points). Each retirement makes the news. It gets a jersey night the next season, with a hype bump and a press question if he played for you. Nobody new can wear the number.
 - **Record Book** with **League Records** and **Program Records**, kept from the first season of your dynasty:
   - **Single Game:**
     - player records: points, rebounds, assists, steals, blocks, threes
@@ -252,7 +261,7 @@ No logos ship with the game; they're trademarks of their schools. Teams without 
 
 ```
 src/
-  data/        Static data: 2026-27 conferences, 365 teams, rivalries, name pools, hometowns
+  data/        Static data: 2026-27 conferences, 365 teams, rivalries, name pools, hometowns, program lore (lore.ts)
   engine/      Pure TypeScript game logic (no React)
     sim.ts         possession-based game engine (fast + live play-by-play modes)
     schemes.ts     the playbook: offensive/defensive schemes, roster fit, counters, installation, AI scheme choice
@@ -265,6 +274,7 @@ src/
     offseason.ts   awards, carousel, declarations, signing day, draft
     development.ts player development: plans, spotlight, weekly practice, goals, summer workouts
     records.ts     league and program record books: single game, single season, career, team
+    legacy.ts      program legacy: Ring of Honor legends, jersey retirements, jersey nights, recruiting pitch
     portal.ts      transfer portal: retention, entry waves, odds, bidding wars, calls, decisions, grades
     press.ts       press conferences: question pools, reporters, media memory and follow-ups
     events.ts / media.ts   story events, news & social

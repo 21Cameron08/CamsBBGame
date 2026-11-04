@@ -21,6 +21,8 @@ import type { DefStyle, OffStyle } from '../../engine/types';
 import { statusOf, recruitActWithOdds, OddsRow, OutlookWarnings, YourOdds } from '../screens/Recruiting';
 import { FOCUS_INFO, GOAL_ICON, goalStatus, planOf } from '../../engine/development';
 import { sfx } from '../sound';
+import { ProgramStory, allTitles } from '../components/Legacy';
+import { loreOf, programPitch } from '../../engine/legacy';
 
 export function ModalHost() {
   const modal = useGame((s) => s.modal);
@@ -212,6 +214,7 @@ function RecruitModal({ id }: { id: string }) {
   const pct = (p: number) => `${Math.round(p * 100)}%`;
   const onBoard = g.user.board.includes(r.id);
   const maxNil = Math.max(r.nilAsk * 2.2, 20000, nil);
+  const pitch = programPitch(g, user);
   return (
     <div>
       <div className="hero" style={{ padding: '28px 30px 22px' }}>
@@ -297,6 +300,7 @@ function RecruitModal({ id }: { id: string }) {
                 </div>
               </div>
               <div className="tiny muted" style={{ marginTop: 6 }}>Your pitch strength: <b style={{ color: 'var(--text)' }}>{Math.round(appeal.total)}</b>/100. Broken promises crush morale.</div>
+              {pitch && <div className="tiny" style={{ marginTop: 4, color: 'var(--gold)' }}>🏛️ Selling: {pitch}</div>}
               {preview && (
                 <div className="rec-preview">
                   <div style={{ flex: 1 }}>
@@ -347,7 +351,7 @@ function RecruitModal({ id }: { id: string }) {
 function TeamModal({ id }: { id: string }) {
   const g = useGameState();
   const t = g.teams[id];
-  const [tab, setTab] = useState<'roster' | 'schedule' | 'history'>('roster');
+  const [tab, setTab] = useState<'roster' | 'schedule' | 'history' | 'program'>('roster');
   const open = useGame((s) => s.open);
   if (!t) return null;
   const coach = g.coaches[t.coachId];
@@ -355,6 +359,8 @@ function TeamModal({ id }: { id: string }) {
   const players = teamPlayers(g, t.id).sort((a, b) => b.ovr - a.ovr);
   const games = g.schedule.filter((x) => x.home === t.id || x.away === t.id).sort((a, b) => a.day - b.day);
   const off = OFF_STYLES.find((o) => o.id === t.strategy.offense), def = DEF_STYLES.find((o) => o.id === t.strategy.defense);
+  const lore = loreOf(t.id);
+  const titles = allTitles(g, t.id).length;
   return (
     <div>
       <div className="hero" style={{ padding: '30px 30px 24px' }}>
@@ -365,9 +371,10 @@ function TeamModal({ id }: { id: string }) {
             <div className="eyebrow" style={{ color: 'rgba(255,255,255,.8)' }}>{conf?.name} · {t.city}, {t.state}</div>
             <div className="h1" style={{ fontSize: 48, marginTop: 6 }}>{t.apRank ? <span className="rank">#{t.apRank} </span> : null}{t.school}</div>
             <div style={{ fontSize: 20, color: teamAccent(t.colors), fontWeight: 700 }}>{t.mascot}</div>
+            {lore && <div className="small lore-crowd" style={{ marginTop: 6, maxWidth: 560 }}>{lore.identity}</div>}
             <div className="row wrap" style={{ marginTop: 10 }}>
               <span className="pill">{t.record.w}-{t.record.l} ({t.record.cw}-{t.record.cl})</span><span className="pill">NET {t.net || '—'}</span><span className="pill">Rating {t.rating.toFixed(1)}</span>
-              <span className="pill">🏟️ {t.arena}</span><span className="pill">{off?.icon} {off?.label}</span><span className="pill">{def?.icon} {def?.label}</span>
+              <span className="pill">🏟️ {t.arena}</span>{titles > 0 && <span className="pill gold">🏆 {titles} national title{titles > 1 ? 's' : ''}</span>}<span className="pill">{off?.icon} {off?.label}</span><span className="pill">{def?.icon} {def?.label}</span>
             </div>
           </div>
           {coach && (
@@ -380,7 +387,8 @@ function TeamModal({ id }: { id: string }) {
         </div>
       </div>
       <div style={{ padding: '0 30px 26px' }}>
-        <div style={{ margin: '4px 0 14px' }}><Tabs id="tm" value={tab} onChange={setTab} tabs={[{ id: 'roster', label: 'Roster' }, { id: 'schedule', label: 'Schedule' }, { id: 'history', label: 'History' }]} /></div>
+        <div style={{ margin: '4px 0 14px' }}><Tabs id="tm" value={tab} onChange={setTab} tabs={[{ id: 'roster', label: 'Roster' }, { id: 'schedule', label: 'Schedule' }, { id: 'history', label: 'History' }, { id: 'program', label: 'Program' }]} /></div>
+        {tab === 'program' && <ProgramStory g={g} team={t} />}
         {tab === 'roster' && (
           <table className="table">
             <thead><tr><th></th><th>Player</th><th>Pos</th><th>Yr</th><th>Ht</th><th className="c">OVR</th><th className="r">PTS</th><th className="r">REB</th><th className="r">AST</th></tr></thead>
@@ -564,6 +572,7 @@ function PregameModal({ gameId }: { gameId: string }) {
             <div className="small muted">{opp.record.w}-{opp.record.l}</div>
           </motion.div>
         </div>
+        {!game.neutral && loreOf(game.home)?.crowd && <div className="small lore-crowd" style={{ textAlign: 'center', marginTop: 14 }}>🎙️ “{loreOf(game.home)!.crowd}”</div>}
         <div className="tiny muted" style={{ textAlign: 'center', marginTop: 12 }}>{game.neutral ? 'Neutral site' : g.teams[game.home].arena} · Line: {userLine === 0 ? 'Pick’em' : `${user.abbr} ${userLine > 0 ? '-' : '+'}${Math.abs(userLine)}`} · Win prob {Math.round(wp * 100)}%</div>
       </div>
       <div style={{ padding: '6px 30px 28px' }} className="grid g2">

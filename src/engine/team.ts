@@ -6,6 +6,7 @@ import type { ConferenceDef } from '../data/types';
 import { staffEffects } from './staff';
 import { practiceMods } from './development';
 import { chooseSchemes, playbookState } from './schemes';
+import { retiredNumbers } from './legacy';
 
 export const ROSTER_MAX = 15;
 export const ROSTER_MIN = 12;
@@ -61,6 +62,8 @@ export function assignNumbers(state: GameState, team: Team) {
   const used = new Set<number>();
   const ps = teamPlayers(state, team.id);
   for (const p of ps) if (p.num > 0 && !used.has(p.num)) used.add(p.num); else p.num = 0;
+  // retired numbers stay in the rafters (anyone already wearing one keeps it)
+  for (const n of retiredNumbers(state, team.id)) used.add(n);
   const pool = [0, 1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 15, 20, 21, 22, 23, 24, 25, 30, 31, 32, 33, 34, 35, 40, 41, 42, 43, 44, 45, 50, 51, 52, 55, 3, 7, 8, 9];
   for (const p of ps) {
     if (p.num > 0) continue;
