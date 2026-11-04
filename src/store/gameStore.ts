@@ -17,17 +17,20 @@ import { recordBook } from '../engine/records';
 import { playbookState } from '../engine/schemes';
 import { loreOf } from '../data/lore';
 import { ensureRadio } from '../engine/radio';
+import { ensurePstats } from '../engine/pstats';
 
 export type Screen =
   | 'home' | 'roster' | 'staff' | 'schedule' | 'recruiting' | 'portal' | 'nil' | 'rankings' | 'standings' | 'bracket'
-  | 'media' | 'stats' | 'coach' | 'inbox' | 'offseason' | 'settings' | 'history' | 'development' | 'records' | 'radio';
+  | 'media' | 'stats' | 'coach' | 'inbox' | 'offseason' | 'settings' | 'history' | 'development' | 'records' | 'radio' | 'programs';
 
 export type Modal =
   | { kind: 'player'; id: string }
   | { kind: 'recruit'; id: string }
   | { kind: 'team'; id: string }
   | { kind: 'box'; gameId: string }
-  | { kind: 'pregame'; gameId: string };
+  | { kind: 'pregame'; gameId: string }
+  | { kind: 'program'; id: string }
+  | { kind: 'coach'; id: string };
 
 export interface Toast { id: number; text: string; kind: 'info' | 'good' | 'bad' }
 
@@ -120,6 +123,7 @@ export const useGame = create<Store>((set, get) => ({
     migratePortal(g);
     const migrated = migrateStaff(g);
     ensureDevelopment(g);
+    ensurePstats(g);
     ensureRadio(g);
     recordBook(g);
     playbookState(g);

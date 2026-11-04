@@ -22,6 +22,7 @@ import { statusOf, recruitActWithOdds, OddsRow, OutlookWarnings, YourOdds } from
 import { FOCUS_INFO, GOAL_ICON, goalStatus, planOf } from '../../engine/development';
 import { sfx } from '../sound';
 import { ProgramStory, allTitles } from '../components/Legacy';
+import { ProgramDetail, CoachDetail } from '../screens/Programs';
 import { loreOf, programPitch } from '../../engine/legacy';
 
 export function ModalHost() {
@@ -37,6 +38,8 @@ export function ModalHost() {
           {modal.kind === 'team' && <TeamModal id={modal.id} />}
           {modal.kind === 'box' && <BoxModal gameId={modal.gameId} />}
           {modal.kind === 'pregame' && <PregameModal gameId={modal.gameId} />}
+          {modal.kind === 'program' && <ProgramDetail id={modal.id} />}
+          {modal.kind === 'coach' && <CoachDetail id={modal.id} />}
         </ModalFrame>
       )}
     </>
@@ -382,13 +385,17 @@ function TeamModal({ id }: { id: string }) {
               <CoachFace c={coach} size={96} team={t} />
               <div className="small b">{coach.isUser ? 'You' : `${coach.first} ${coach.last}`}</div>
               <div className="tiny muted">{coach.careerW}-{coach.careerL} career</div>
+              <button className="btn sm ghost" style={{ marginTop: 4 }} onClick={() => open({ kind: 'coach', id: coach.id })}>Coach profile</button>
             </div>
           )}
         </div>
       </div>
       <div style={{ padding: '0 30px 26px' }}>
         <div style={{ margin: '4px 0 14px' }}><Tabs id="tm" value={tab} onChange={setTab} tabs={[{ id: 'roster', label: 'Roster' }, { id: 'schedule', label: 'Schedule' }, { id: 'history', label: 'History' }, { id: 'program', label: 'Program' }]} /></div>
-        {tab === 'program' && <ProgramStory g={g} team={t} />}
+        {tab === 'program' && <>
+          <div className="row" style={{ justifyContent: 'flex-end', marginBottom: 10 }}><button className="btn sm" onClick={() => open({ kind: 'program', id: t.id })}>📊 Full program stats</button></div>
+          <ProgramStory g={g} team={t} />
+        </>}
         {tab === 'roster' && (
           <table className="table">
             <thead><tr><th></th><th>Player</th><th>Pos</th><th>Yr</th><th>Ht</th><th className="c">OVR</th><th className="r">PTS</th><th className="r">REB</th><th className="r">AST</th></tr></thead>

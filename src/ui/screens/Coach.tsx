@@ -69,6 +69,8 @@ export function CoachScreen() {
                 <span className="pill">Age {coach.age}</span>
                 {alma && <span className="pill"><TeamLogo team={alma} size={14} /> {alma.school} alum</span>}
                 {coach.hometown && <span className="pill">🏠 {coach.hometown}</span>}
+                <button className="btn sm" onClick={() => useGame.getState().open({ kind: 'coach', id: coach.id })}>🏅 Your coach profile</button>
+                <button className="btn sm ghost" onClick={() => useGame.getState().nav('programs', 'coaches')}>Coach rankings →</button>
               </div>
               <div style={{ marginTop: 16, maxWidth: 520 }}>
                 <div className="row" style={{ marginBottom: 6 }}>

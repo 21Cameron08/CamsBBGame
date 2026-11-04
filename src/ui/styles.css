@@ -500,3 +500,9 @@ input[type='range'] { accent-color: var(--accent); width: 100%; }
   .radio-line { font-size: 16px; }
   .radio-title { font-size: 30px; }
 }
+
+/* ---------- Programs & Coaches ---------- */
+.pc-podium { padding: 14px 16px; cursor: pointer; }
+.pc-medal { font-size: 26px; flex: none; }
+.pill.link { cursor: pointer; }
+.pill.link:hover { background: rgba(255, 255, 255, 0.14); }

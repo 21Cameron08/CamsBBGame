@@ -96,7 +96,10 @@ export function HistoryScreen() {
               <div className="eyebrow" style={{ color: 'rgba(255,255,255,.8)' }}>Program History</div>
               <div className="h1" style={{ fontSize: 44 }}>{team.school} {team.mascot}</div>
               <div className="small" style={{ opacity: 0.85 }}>{team.arena} · {conf?.name} · Prestige {Math.round(team.prestige)}</div>
-              <button className="btn sm" style={{ marginTop: 10 }} onClick={() => openRecords('program')}>📖 Program Record Book</button>
+              <div className="row" style={{ marginTop: 10, gap: 8 }}>
+                <button className="btn sm" onClick={() => openRecords('program')}>📖 Program Record Book</button>
+                <button className="btn sm" onClick={() => open({ kind: 'program', id: team.id })}>📊 Program Stats</button>
+              </div>
             </div>
             <div className="spacer" />
             <div className="grid g3" style={{ gap: 10, minWidth: 380 }}>

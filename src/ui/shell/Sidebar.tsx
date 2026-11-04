@@ -18,6 +18,7 @@ const ITEMS: { id: Screen; icon: string; label: string; section?: string }[] = [
   { id: 'bracket', icon: '🗂️', label: 'Brackets' },
   { id: 'stats', icon: '📈', label: 'Stat Leaders' },
   { id: 'records', icon: '📖', label: 'Record Book' },
+  { id: 'programs', icon: '🏛️', label: 'Programs & Coaches' },
   { id: 'media', icon: '📰', label: 'Media & Social' },
   { id: 'radio', icon: '📻', label: 'Fan Radio' },
   { id: 'coach', icon: '🧢', label: 'Coach Career', section: 'You' },

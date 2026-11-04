@@ -226,6 +226,23 @@ Production build: `npm run build`, then `npm run preview` (or host the `dist/` f
   - **1×, 2× and 4× speed**, pause (Space), next (→) and **skip** (Esc), plus a **replay** button on the Bracket page
   - your Selection Sunday press conference follows the show
 - **Awards**: National POY, All-American teams, Freshman of the Year, DPOY, Coach of the Year, conference POYs, Final Four MOP.
+- **Programs & Coaches** (sidebar), a stats hub for the whole league since your dynasty began:
+  - **Program leaderboards** with five views:
+    - Overview: seasons, W-L, NCAA bids, Sweet 16s, Final Fours, titles, weeks at No. 1, pros produced
+    - Postseason: NCAA W-L, Elite Eights, runner-ups, all-time titles including real pre-2026 titles, conference regular-season and tournament titles
+    - Polls & Top 25: weeks ranked, weeks at No. 1, preseason No. 1s, final Top 25 and Top 10 finishes, record vs AP Top 25 teams
+    - Talent: players drafted, first-rounders, lottery picks, All-Americans, Players of the Year, average recruiting class rank, top-10 classes, retired jerseys
+    - Home & Road: home and road records, points scored and allowed, longest win streak, biggest win
+  - every program has a **Program Stats** page:
+    - 16 stat tiles and its best season, longest streak and biggest win
+    - season by season: home/away splits, record vs the Top 25, scoring, streaks, weeks ranked and peak rank, AP finish, NCAA result and record, recruiting class rank
+    - every head coach the program has had, the pros it produced, every national title, and your record against it
+  - **Coach rankings** to settle who's best:
+    - every active head coach, plus the retired and fired ones, ranked by a **Legacy Score** built from tournament runs, bids, conference titles, Top-25 finishes, winning, Coach of the Year awards, star players and pre-dynasty wins
+    - tiers: Unproven, Rising, Proven, Elite, Hall of Famer, Legend
+    - a podium, where you rank, the winningest active coach, the most titles and the best win %
+    - each **Coach Profile** shows dynasty and career records, NCAA record, Final Fours, titles, COY awards, pros coached, a Legacy Score breakdown, coaching stops, season by season, and your head-to-head record against him
+  - the season in progress counts toward records and scores. Sortable columns, conference filter and search. Open it from the sidebar, the History screen, any Team page or your Coach Career page.
 - **Program history**: championship banners, a season-by-season table, a trophy case, award winners and draft picks.
 - **Program lore** for **71 of the best-known programs** (blue bloods, the big conferences, famous Cinderellas):
   - real traditions, fan bases, student sections and arena nicknames, plus each program's national titles through the 2025–26 season. No real players are named.
@@ -294,6 +311,7 @@ src/
     portal.ts      transfer portal: retention, entry waves, odds, bidding wars, calls, decisions, grades
     press.ts       press conferences: question pools, reporters, media memory and follow-ups
     radio.ts       Full Court Fanatics: weekly fan radio episodes, locks, predictions, offseason specials
+    pstats.ts      program and coach stats: per-season tracking, retired/fired coaches, head-to-head, summaries and scores
     events.ts / media.ts   story events, news & social
     staff.ts       coaching staff: market, effects, contracts, poaching, coaching tree
     scheduling.ts  Scheduling Office: Feast Week events, booking rules, guarantees, series, résumé meter

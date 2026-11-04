@@ -22,6 +22,7 @@ import { recordSeasonEnd, trackProgram } from './records';
 import { seasonInstallReset, resetPlaybook } from './schemes';
 import { retireJerseys, jerseyNights } from './legacy';
 import { airEpisode, radioOffseason } from './radio';
+import { finalizeProgramSeason, coachExit, recordClassRanks } from './pstats';
 
 const NCAA_BONUS: Record<string, number> = { Champion: 30, 'Runner-up': 22, 'Final Four': 18, 'Elite Eight': 12, 'Sweet 16': 8, 'Round of 32': 4, 'Round of 64': 1, 'First Four': 0.5 };
 
@@ -153,6 +154,8 @@ export function beginSeasonEnd(state: GameState) {
   }
   const summary = `${user.school} finished ${user.record.w}-${user.record.l} (${user.record.cw}-${user.record.cl} conf, ${ordinal(uh.confFinish)} place)${uh.postseason ? ` — ${uh.postseason}` : ''}${uh.ncaaSeed ? ` as a No. ${uh.ncaaSeed} seed` : ''}. Goal: ${state.user.expectation}.`;
 
+  // program stats for the season, before the carousel moves coaches around
+  finalizeProgramSeason(state);
   // coaching carousel
   const carousel = runCarousel(state);
   state.user.fired = fired;
@@ -200,6 +203,7 @@ function runCarousel(state: GameState): string[] {
     if (retire || rng.chance(clamp(pFire, 0, 0.6))) {
       lines.push(retire ? `${c.first} ${c.last} retires from ${t.school}` : `${t.school} fires ${c.first} ${c.last}`);
       if (t.prestige >= 50 || retire) addNews(state, { kind: 'coach', headline: retire ? `${t.school}'s ${c.first} ${c.last} announces retirement` : `${t.school} fires head coach ${c.first} ${c.last}`, body: retire ? `After a long career, ${c.first} ${c.last} is stepping away.` : `${t.school} is making a change after ${recent.map((h) => `${h.w}-${h.l}`).join(', ')} the past ${recent.length} seasons.`, teams: [t.id], personId: c.id, personKind: 'coach' });
+      coachExit(state, c, retire ? 'retired' : 'fired', t.id);
       c.teamId = null;
       t.coachId = '';
       t.coachChange = true;
@@ -356,6 +360,7 @@ export function doSigning(state: GameState) {
   }
   // the radio show airs its Signing Day special while the class is still on the board
   airEpisode(state, 'signing');
+  recordClassRanks(state);
   for (const r of recruits) {
     if (!r.committed) { delete state.recruits[r.id]; continue; }
     const t = state.teams[r.committed];

@@ -705,6 +705,8 @@ export interface GameState {
   staff?: StaffState;
   /** jerseys retired during the dynasty (created on first use) */
   legacy?: { retired: Record<string, RetiredJersey[]> };
+  /** program and coach stat tracking (older saves start without it) */
+  pstats?: ProgramStatsState;
   /** Full Court Fanatics, the weekly fan radio show (older saves start without it) */
   radio?: RadioState;
   /** scheme familiarity for the user's team (created on first use) */
@@ -965,4 +967,40 @@ export interface RadioState {
   no1?: string;
   /** game day of the last episode (the next show covers everything since) */
   lastDay?: number;
+}
+
+// ---------------- Program & coach stats ----------------
+/** One program's season beyond the basics in TeamSeasonHistory (stored compactly as a tuple, see pstats.ts) */
+export interface ProgSeason {
+  s: number;
+  /** weeks in the AP Top 25 / at No. 1, best rank, preseason rank */
+  wk: number; w1: number; hi: number | null; pre: number | null;
+  /** record vs AP Top 25 opponents (rank at tip-off) */
+  rw: number; rl: number;
+  hw: number; hl: number; aw: number; al: number; nw: number; nl: number;
+  pf: number; pa: number;
+  /** longest win streak */
+  st: number;
+  /** NCAA tournament and conference tournament records */
+  tw: number; tl: number; ctw: number; ctl: number;
+  /** biggest win: margin and opponent */
+  bm: number; bo: string;
+  /** rank of the recruiting class signed that spring */
+  cr: number | null;
+}
+/** A head coach who has left the league (fired or retired), kept so his record survives */
+export interface CoachExit {
+  id: string; first: string; last: string; age: number; archetype: CoachArchetype;
+  status: 'retired' | 'fired';
+  lastTeam: string; until: number;
+  careerW: number; careerL: number;
+}
+export interface ProgramStatsState {
+  /** first season with full tracking */
+  since: number;
+  /** teamId -> encoded season tuples */
+  seasons: Record<string, (number | string | null)[][]>;
+  exits: Record<string, CoachExit>;
+  /** your record against each coach and each program */
+  h2h: { coach: Record<string, [number, number]>; team: Record<string, [number, number]> };
 }

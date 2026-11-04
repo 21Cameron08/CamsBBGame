@@ -25,6 +25,7 @@ import { StaffScreen } from './screens/Staff';
 import { DevelopmentScreen } from './screens/Development';
 import { RecordsScreen } from './screens/Records';
 import { RadioScreen } from './screens/Radio';
+import { ProgramsScreen } from './screens/Programs';
 import { ModalHost } from './overlays/ModalHost';
 import { LiveGame } from './overlays/LiveGame';
 import { PressConferenceView } from './overlays/PressConference';
@@ -52,6 +53,7 @@ const SCREENS: Record<Screen, React.FC> = {
   development: DevelopmentScreen,
   records: RecordsScreen,
   radio: RadioScreen,
+  programs: ProgramsScreen,
 };
 
 export default function App() {
