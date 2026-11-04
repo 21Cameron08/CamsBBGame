@@ -56,7 +56,7 @@ export function ScheduleScreen() {
               const today = x.day === g.day && !x.played;
               const sp = !x.played ? spread(g, x.home, x.away, x.neutral) : 0;
               const userLine = isHome ? sp : -sp;
-              const rv = isRivalry(x.home, x.away);
+              const rv = isRivalry(g, x.home, x.away);
               const hasBox = !!g.boxScores[x.id];
               return (
                 <motion.div key={x.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i * 0.025, 0.4) }}
@@ -72,7 +72,7 @@ export function ScheduleScreen() {
                     <div className="b ellipsis"><TeamName team={opp} /></div>
                     <div className="tiny muted ellipsis">{opp.record.w}-{opp.record.l} · {g.conferences.find((c) => c.id === opp.conf)?.short}{x.event ? ` · ${x.event}` : ''}</div>
                   </div>
-                  {rv && <span className="pill bad">🔥 Rivalry</span>}
+                  {rv && <span className="pill bad" title={rv.name}>🔥 {rv.name.length > 22 ? 'Rivalry' : rv.name}</span>}
                   {x.tv && <span className="tiny muted" style={{ width: 120, textAlign: 'right' }}>📺 {x.tv}</span>}
                   <div style={{ width: 130, textAlign: 'right' }}>
                     {x.played ? (

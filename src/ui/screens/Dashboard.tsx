@@ -12,6 +12,7 @@ import { seasonLabel } from '../../engine/calendar';
 import type { GameState, ScheduledGame } from '../../engine/types';
 import { teamAccent } from '../color';
 import { PRACTICE_INFO, PRACTICE_ORDER, goalStatus } from '../../engine/development';
+import { RivalryStrip } from './Rivalries';
 
 const IN_SEASON_PHASES = ['preseason', 'regular', 'confTourney', 'selection', 'ncaa'];
 
@@ -265,7 +266,7 @@ function NextGameCard({ g }: { g: GameState }) {
   const sp = spread(g, next.home, next.away, next.neutral);
   const userSpread = isHome ? sp : -sp;
   const wp = normCdf(userSpread / 11);
-  const rv = isRivalry(home.id, away.id);
+  const rv = isRivalry(g, home.id, away.id);
   const oppCoach = g.coaches[opp.coachId];
   const cal = g.calendar[next.day];
   return (
@@ -276,7 +277,7 @@ function NextGameCard({ g }: { g: GameState }) {
           <span className={`pill ${today ? 'gold' : ''}`}>{today ? '🔴 GAME DAY' : 'NEXT UP'}</span>
           <span className="pill">{cal?.label.split(' · ')[0]}</span>
           {next.tv && <span className="pill">📺 {next.tv}</span>}
-          {rv && <span className="pill bad">🔥 {rv.name ?? 'Rivalry'}</span>}
+          {rv && <span className="pill bad">🔥 {rv.name}</span>}
           {next.event && <span className="pill accent">{next.event}</span>}
           <div className="spacer" />
           <span className="small muted">{next.neutral ? 'Neutral site' : isHome ? `${user.arena}` : `@ ${opp.arena}`}</span>
@@ -300,6 +301,7 @@ function NextGameCard({ g }: { g: GameState }) {
             <div style={{ flex: 1, background: teamAccent(opp.colors), opacity: 0.85 }} />
           </div>
         </div>
+        {rv && <RivalryStrip g={g} r={rv} me={user.id} />}
         <div className="row" style={{ marginTop: 18 }}>
           <CoachFace c={coach} size={34} team={user} />
           <span className="small muted">vs</span>

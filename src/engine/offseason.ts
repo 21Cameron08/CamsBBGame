@@ -23,6 +23,7 @@ import { seasonInstallReset, resetPlaybook } from './schemes';
 import { retireJerseys, jerseyNights } from './legacy';
 import { airEpisode, radioOffseason } from './radio';
 import { finalizeProgramSeason, coachExit, recordClassRanks } from './pstats';
+import { rivalrySeasonEnd, rivalryCoachMove } from './rivalry';
 
 const NCAA_BONUS: Record<string, number> = { Champion: 30, 'Runner-up': 22, 'Final Four': 18, 'Elite Eight': 12, 'Sweet 16': 8, 'Round of 32': 4, 'Round of 64': 1, 'First Four': 0.5 };
 
@@ -156,6 +157,7 @@ export function beginSeasonEnd(state: GameState) {
 
   // program stats for the season, before the carousel moves coaches around
   finalizeProgramSeason(state);
+  rivalrySeasonEnd(state);
   // coaching carousel
   const carousel = runCarousel(state);
   state.user.fired = fired;
@@ -222,6 +224,7 @@ function runCarousel(state: GameState): string[] {
       const old = state.teams[hire.teamId!];
       old.coachId = '';
       old.coachChange = true;
+      rivalryCoachMove(state, old.id, t.id, hire.last, false);
       lines.push(`${t.school} hires ${hire.first} ${hire.last} away from ${old.school}`);
       if (t.prestige >= 45) addNews(state, { kind: 'coach', headline: `${t.school} hires ${old.school}'s ${hire.first} ${hire.last}`, body: `${hire.first} ${hire.last} (${hire.careerW}-${hire.careerL} career) leaves ${old.school} for ${t.school}.`, teams: [t.id, old.id], personId: hire.id, personKind: 'coach' });
       vacancies.push(old);
@@ -283,7 +286,8 @@ export function takeJob(state: GameState, teamId: string) {
   old.coachChange = true;
   // displaced coach at new team
   const prev = state.coaches[nu.coachId];
-  if (prev && !prev.isUser) delete state.coaches[prev.id];
+  if (prev && !prev.isUser) { coachExit(state, prev, 'fired', nu.id); delete state.coaches[prev.id]; }
+  if (!wasFired) rivalryCoachMove(state, old.id, nu.id, coach.last, true);
   nu.coachId = coach.id;
   nu.coachChange = true;
   coach.teamId = nu.id;

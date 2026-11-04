@@ -131,6 +131,17 @@ export function generateSchedule(state: GameState): ScheduledGame[] {
     const homeFirst = (state.season + (a.id < b.id ? 0 : 1)) % 2 === 0;
     add(day, homeFirst ? a.id : b.id, homeFirst ? b.id : a.id, 'nc', false, rv.name);
   }
+  // rivalries born in the dynasty get a game while they're hot
+  for (const r of Object.values(state.rivals?.pairs ?? {})) {
+    if (!r.active || r.origin !== 'born' || r.heat < 55) continue;
+    const a = byId[r.a], b = byId[r.b];
+    if (!a || !b || a.conf === b.conf || played.has(key(a.id, b.id))) continue;
+    if (planActive && (r.a === uid || r.b === uid)) continue;
+    const day = rng.int(9, NONCONF_DAYS);
+    if (busy[day].has(a.id) || busy[day].has(b.id)) continue;
+    const homeFirst = (state.season + (a.id < b.id ? 0 : 1)) % 2 === 0;
+    add(day, homeFirst ? a.id : b.id, homeFirst ? b.id : a.id, 'nc', false, r.name);
+  }
 
   // ---- 3. Feast-week MTEs (neutral, 4-team pods among tier 1-2 teams) ----
   const mtePool = rng.shuffle(teams.filter((t) => (confTier(state, t) <= 2 || t.prestige >= 50) && !reserved.has(t.id)));

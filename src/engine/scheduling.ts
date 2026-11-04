@@ -6,6 +6,7 @@ import { refreshPower } from './team';
 import { powerToPoints } from './rankings';
 import { normCdf } from './sim';
 import { roundMoney, fmtMoney } from './player';
+import { rivalriesOf } from './rivalry';
 
 export const NONCONF_SLOTS = 12;
 const HOME_ADJ = 3.2;
@@ -47,6 +48,15 @@ export function userRivalryGames(state: GameState, season: number): PlannedGame[
     const homeId = homeFirst ? a.id : b.id;
     const oppId = me.id === a.id ? b.id : a.id;
     out.push({ oppId, site: homeId === me.id ? 'home' : 'away', guarantee: 0, locked: 'rivalry', event: rv.name });
+  }
+  // rivalries born in the dynasty keep going while they're hot
+  for (const r of rivalriesOf(state, me.id)) {
+    if (r.origin !== 'born' || r.heat < 55) continue;
+    const oppId = r.a === me.id ? r.b : r.a;
+    const opp = state.teams[oppId];
+    if (!opp || opp.conf === me.conf || out.some((x) => x.oppId === oppId)) continue;
+    const homeFirst = (season + (me.id < oppId ? 0 : 1)) % 2 === 0;
+    out.push({ oppId, site: homeFirst ? 'home' : 'away', guarantee: 0, locked: 'rivalry', event: r.name });
   }
   return out;
 }

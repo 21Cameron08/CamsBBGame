@@ -23,6 +23,8 @@ import { FOCUS_INFO, GOAL_ICON, goalStatus, planOf } from '../../engine/developm
 import { sfx } from '../sound';
 import { ProgramStory, allTitles } from '../components/Legacy';
 import { ProgramDetail, CoachDetail } from '../screens/Programs';
+import { RivalryDetail, RivalryCard, RivalryStrip } from '../screens/Rivalries';
+import { rivalriesOf } from '../../engine/rivalry';
 import { loreOf, programPitch } from '../../engine/legacy';
 
 export function ModalHost() {
@@ -40,6 +42,7 @@ export function ModalHost() {
           {modal.kind === 'pregame' && <PregameModal gameId={modal.gameId} />}
           {modal.kind === 'program' && <ProgramDetail id={modal.id} />}
           {modal.kind === 'coach' && <CoachDetail id={modal.id} />}
+          {modal.kind === 'rivalry' && <RivalryDetail id={modal.id} />}
         </ModalFrame>
       )}
     </>
@@ -395,6 +398,12 @@ function TeamModal({ id }: { id: string }) {
         {tab === 'program' && <>
           <div className="row" style={{ justifyContent: 'flex-end', marginBottom: 10 }}><button className="btn sm" onClick={() => open({ kind: 'program', id: t.id })}>📊 Full program stats</button></div>
           <ProgramStory g={g} team={t} />
+          {rivalriesOf(g, t.id).length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <div className="eyebrow" style={{ marginBottom: 8 }}>Rivals</div>
+              <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 10 }}>{rivalriesOf(g, t.id).slice(0, 4).map((r, i) => <RivalryCard key={r.key} g={g} r={r} me={t.id} i={i} />)}</div>
+            </div>
+          )}
         </>}
         {tab === 'roster' && (
           <table className="table">
@@ -554,7 +563,7 @@ function PregameModal({ gameId }: { gameId: string }) {
   const sp = spread(g, game.home, game.away, game.neutral);
   const userLine = isHome ? sp : -sp;
   const wp = normCdf(userLine / 11);
-  const rv = isRivalry(game.home, game.away);
+  const rv = isRivalry(g, game.home, game.away);
   const s = user.strategy;
   const topOpp = teamPlayers(g, opp.id).sort((a, b) => b.ovr - a.ovr).slice(0, 3);
   return (
@@ -564,7 +573,7 @@ function PregameModal({ gameId }: { gameId: string }) {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: [0, 0.4, 0.15] }} transition={{ duration: 1.4 }} style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 50%, #fff, transparent 40%)' }} />
         </div>
         <div className="row" style={{ justifyContent: 'center', gap: 8 }}>
-          <span className="pill gold">GAME DAY</span>{rv && <span className="pill bad">🔥 {rv.name ?? 'Rivalry Game'}</span>}{game.event && <span className="pill accent">{game.event}</span>}{game.tv && <span className="pill">📺 {game.tv}</span>}
+          <span className="pill gold">GAME DAY</span>{rv && <span className="pill bad">🔥 {rv.name}</span>}{game.event && <span className="pill accent">{game.event}</span>}{game.tv && <span className="pill">📺 {game.tv}</span>}
         </div>
         <div className="row" style={{ justifyContent: 'space-between', marginTop: 26, alignItems: 'center' }}>
           <motion.div initial={{ x: -200, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 120, damping: 14 }} style={{ textAlign: 'center', flex: 1 }}>
@@ -580,6 +589,7 @@ function PregameModal({ gameId }: { gameId: string }) {
           </motion.div>
         </div>
         {!game.neutral && loreOf(game.home)?.crowd && <div className="small lore-crowd" style={{ textAlign: 'center', marginTop: 14 }}>🎙️ “{loreOf(game.home)!.crowd}”</div>}
+        {rv && <RivalryStrip g={g} r={rv} me={userId} />}
         <div className="tiny muted" style={{ textAlign: 'center', marginTop: 12 }}>{game.neutral ? 'Neutral site' : g.teams[game.home].arena} · Line: {userLine === 0 ? 'Pick’em' : `${user.abbr} ${userLine > 0 ? '-' : '+'}${Math.abs(userLine)}`} · Win prob {Math.round(wp * 100)}%</div>
       </div>
       <div style={{ padding: '6px 30px 28px' }} className="grid g2">

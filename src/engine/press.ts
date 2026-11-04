@@ -5,7 +5,6 @@ import type { BoxPlayer, BoxScore, Coach, Effect, GameState, Player, PressClaim,
 import type { ConferenceDef } from '../data/types';
 import { INSIDERS } from './media';
 import { FIRST_NAMES, LAST_NAMES } from '../data/names';
-import { RIVALRIES } from '../data/rivalries';
 import { teamPlayers } from './team';
 import { resumeMetrics } from './scheduling';
 import { confStandings, selectionScore, REGIONS, type FieldEntry } from './rankings';
@@ -15,6 +14,7 @@ import { classRankings } from './recruiting';
 import { FOCUS_INFO } from './development';
 import { recordsInGame, GAME_CATS, TEAM_GAME_CATS, fmtRec } from './records';
 import { loreOf, ringOfHonor, retiredJerseys } from './legacy';
+import { rivalryOf } from './rivalry';
 
 type Tone = PressQuestion['answers'][number]['tone'];
 type Answer = PressQuestion['answers'][number];
@@ -205,8 +205,8 @@ function selectionRank(state: GameState, teamId: string): number {
   const sorted = Object.values(state.teams).sort((a, b) => selectionScore(b) - selectionScore(a));
   return sorted.findIndex((t) => t.id === teamId) + 1;
 }
-function rivalOf(a: string, b: string) {
-  return RIVALRIES.find((r) => (r.a === a && r.b === b) || (r.a === b && r.b === a));
+function rivalOf(state: GameState, a: string, b: string) {
+  return rivalryOf(state, a, b);
 }
 function confName(c: Ctx) { return c.conf?.short ?? 'league'; }
 function postseasonPhrase(h: TeamSeasonHistory) {
@@ -702,10 +702,32 @@ export function mediaDayPresser(state: GameState): PressConference {
       });
     }
   }
-  const rivalGame = state.schedule.filter((g) => (g.home === team.id || g.away === team.id) && rivalOf(g.home, g.away)).sort((a, b) => a.day - b.day)[0];
-  if (rivalGame) {
+  const rivalGame = state.schedule.filter((g) => (g.home === team.id || g.away === team.id) && rivalOf(state, g.home, g.away)).sort((a, b) => a.day - b.day)[0];
+  const rvRec = rivalGame ? rivalOf(state, rivalGame.home, rivalGame.away) : undefined;
+  if (rivalGame && rvRec?.origin === 'born' && rvRec.reason?.includes(`Coach ${coach.last} left`)) {
+    const old = state.teams[rivalGame.home === team.id ? rivalGame.away : rivalGame.home];
+    const there = rivalGame.home === old.id;
+    cands.push({
+      key: 'md.oldSchool', topic: 'rival', w: 12, lead: true,
+      build: () => makeQ(team, { role: 'national', tag: 'Rivalry' }, there ? `You go back to ${old.arena} this season to face ${old.school}, your old school. What kind of reception are you expecting?` : `${old.school}, your old school, comes to town this season. Is that one circled?`, [
+        A('humble', `I have a lot of love for the people there. But when the ball goes up, I coach ${team.school}.`, [{ kind: 'mediaRep', delta: 4 }]),
+        A('joke', `I'm bringing earplugs. And maybe a helmet.`, [{ kind: 'hype', delta: 4 }, { kind: 'mediaRep', delta: 3 }]),
+        A('fiery', `Circled, underlined and highlighted. We want that one.`, [{ kind: 'hype', delta: 7 }, { kind: 'morale', target: 'team', delta: 2 }, { kind: 'mediaRep', delta: -2 }]),
+      ]),
+    });
+  } else if (rivalGame && rvRec?.origin === 'born') {
     const rv = state.teams[rivalGame.home === team.id ? rivalGame.away : rivalGame.home];
-    const name = rivalOf(rivalGame.home, rivalGame.away)?.name;
+    cands.push({
+      key: 'md.newRival', topic: 'rival', w: 8,
+      build: () => makeQ(team, { role: 'beat', tag: 'Rivalry' }, `${rvRec.name} didn't exist a few years ago. ${rvRec.reason ?? ''} Now it's one of the hottest games on your schedule. How did it get here?`, [
+        A('fiery', `They know what they did. Our guys haven't forgotten.`, [{ kind: 'hype', delta: 6 }, { kind: 'morale', target: 'team', delta: 2 }]),
+        A('humble', `Rivalries are earned. ${rv.school} is a great program, and these games have been great for both schools.`, [{ kind: 'mediaRep', delta: 4 }]),
+        A('joke', `I think the fans like it more than the coaches do. My blood pressure certainly does not.`, [{ kind: 'hype', delta: 4 }, { kind: 'mediaRep', delta: 3 }]),
+      ]),
+    });
+  } else if (rivalGame) {
+    const rv = state.teams[rivalGame.home === team.id ? rivalGame.away : rivalGame.home];
+    const name = rvRec?.name;
     cands.push({
       key: 'md.rival', topic: 'rival', w: 6,
       build: () => makeQ(team, { role: 'tv' }, `Fans already have ${state.calendar[rivalGame.day]?.date ? 'the date' : 'it'} circled: ${rv.school}${name ? `, ${name}` : ''}. How much do your guys talk about that game?`, [
@@ -859,7 +881,11 @@ export function postgamePresser(state: GameState, g: ScheduledGame, box: BoxScor
   const worst = worstBox ? state.players[worstBox.id] : undefined;
   const upsetWin = won && !!opp.apRank && (!team.apRank || team.apRank > opp.apRank);
   const badLoss = !won && !opp.apRank && team.rating - opp.rating > 6;
-  const rv = rivalOf(g.home, g.away);
+  const rv = rivalOf(state, g.home, g.away);
+  const rvStreak = rv?.streak;
+  const rvLast = rv?.meetings[rv.meetings.length - 1];
+  const rvSeries = rv ? [rv.series[team.id] ?? 0, rv.series[opp.id] ?? 0] : [0, 0];
+  const prevHolder = rv && rv.meetings.length >= 2 ? rv.meetings[rv.meetings.length - 2].w : undefined;
   const ncaa = g.type === 'ncaa', ctourn = g.type === 'ctourn';
   const tourney = ncaa || ctourn;
   const big = !!opp.apRank || !!rv || tourney;
@@ -885,8 +911,20 @@ export function postgamePresser(state: GameState, g: ScheduledGame, box: BoxScor
         A('humble', `It's one win. We'll enjoy it tonight and get back to work tomorrow.`, [{ kind: 'mediaRep', delta: 4 }, { kind: 'security', delta: 2 }]),
         A('praise', `Credit to ${opp.school}. Hall of Fame program. Our guys just made a couple more plays.`, [{ kind: 'mediaRep', delta: 5 }]),
       ]) });
+    } else if (rv && rv.trophy && prevHolder && prevHolder !== team.id && rvLast?.w === team.id) {
+      cands.push({ key: 'pg.rivalTrophy', topic: 'result', w: 12, lead: true, build: () => makeQ(team, { role: 'beat', tag: 'Rivalry' }, `${rv.trophy} is coming back to ${team.school}. Where's it going to sit?`, [
+        A('fiery', `Right in the middle of our locker room, where everybody has to walk past it.`, [{ kind: 'hype', delta: 8 }, { kind: 'morale', target: 'team', delta: 4 }]),
+        A('joke', `My office. I might sleep next to it tonight.`, [{ kind: 'hype', delta: 6 }, { kind: 'mediaRep', delta: 3 }]),
+        A('humble', `It belongs to our fans and our students. They earned it as much as the players did.`, [{ kind: 'mediaRep', delta: 4 }, { kind: 'hype', delta: 4 }]),
+      ]) });
+    } else if (rv && rvStreak && rvStreak.t === team.id && rvStreak.n >= 3) {
+      cands.push({ key: 'pg.rivalStreak', topic: 'result', w: 11, lead: true, build: () => makeQ(team, { role: 'columnist', tag: 'Rivalry' }, `That's ${rvStreak.n} straight over ${opp.school}. Is this still a rivalry?`, [
+        A('humble', `Absolutely. Every one of those games was a fight. ${opp.school} will be back.`, [{ kind: 'mediaRep', delta: 4 }]),
+        A('fiery', `Ask them. We're just taking care of business.`, [{ kind: 'hype', delta: 7 }, { kind: 'mediaRep', delta: -2 }]),
+        A('joke', `I hope so. I'd hate to lose the best-attended game on our schedule.`, [{ kind: 'hype', delta: 4 }, { kind: 'mediaRep', delta: 2 }]),
+      ]) });
     } else if (rv) {
-      cands.push({ key: 'pg.rivalW', topic: 'result', w: 10, lead: true, build: () => makeQ(team, { role: 'beat' }, `You beat ${opp.school}${rv.name ? ` in ${rv.name}` : ''}. What does this one mean to your fan base?`, [
+      cands.push({ key: 'pg.rivalW', topic: 'result', w: 10, lead: true, build: () => makeQ(team, { role: 'beat' }, `You beat ${opp.school}${rv.name ? ` in ${rv.name}` : ''}. ${rvSeries[0] + rvSeries[1] > 1 ? `The series since ${rv.since} is ${rvSeries[0]}-${rvSeries[1]}. ` : ''}What does this one mean to your fan base?`, [
         A('fiery', `Everything. Our fans live for this game, and so do I.`, [{ kind: 'hype', delta: 8 }, { kind: 'morale', target: 'team', delta: 3 }]),
         A('humble', `It's a great rivalry. We'll enjoy it, but it's still one win in the standings.`, [{ kind: 'mediaRep', delta: 3 }, { kind: 'hype', delta: 3 }]),
         A('joke', `My dad called before I got to the podium. That's how much it means.`, [{ kind: 'hype', delta: 5 }, { kind: 'mediaRep', delta: 2 }]),
@@ -923,8 +961,14 @@ export function postgamePresser(state: GameState, g: ScheduledGame, box: BoxScor
         A('deflect', `Give ${opp.school} credit. They played well. We'll watch the film.`, [{ kind: 'mediaRep', delta: 1 }]),
         A('humble', `I didn't have them ready. I take full responsibility.`, [{ kind: 'morale', target: 'team', delta: 3 }, { kind: 'security', delta: -1 }, { kind: 'mediaRep', delta: 3 }]),
       ]) });
+    } else if (rv && rvStreak && rvStreak.t === opp.id && rvStreak.n >= 3) {
+      cands.push({ key: 'pg.rivalLStreak', topic: 'result', w: 12, lead: true, build: () => makeQ(team, { role: 'columnist', tag: 'Rivalry' }, `That's ${rvStreak.n} straight losses to ${opp.school}. Your fans are getting restless. What's going wrong in this series?`, [
+        A('fiery', `Nothing I'm going to say up here. But it ends. I promise you it ends.`, [{ kind: 'hype', delta: 4 }, { kind: 'morale', target: 'team', delta: 2 }, { kind: 'security', delta: -1 }], { kind: 'neverAgain', subject: opp.id }),
+        A('humble', `They've been better than us in these games. That's on me to fix.`, [{ kind: 'mediaRep', delta: 4 }, { kind: 'security', delta: -2 }]),
+        A('deflect', `Every game is its own game. I'm not into streaks.`, [{ kind: 'mediaRep', delta: -2 }, { kind: 'security', delta: -1 }]),
+      ]) });
     } else if (rv) {
-      cands.push({ key: 'pg.rivalL', topic: 'result', w: 10, lead: true, build: () => makeQ(team, { role: 'beat' }, `A loss to ${opp.school}. How long will this one sting?`, [
+      cands.push({ key: 'pg.rivalL', topic: 'result', w: 10, lead: true, build: () => makeQ(team, { role: 'beat' }, rv.trophy && rvLast?.w === opp.id && prevHolder === team.id ? `${rv.trophy} goes home with ${opp.school}. How long will this one sting?` : `A loss to ${opp.school}. How long will this one sting?`, [
         A('fiery', `Until we get them back. And we will.`, [{ kind: 'hype', delta: 4 }, { kind: 'morale', target: 'team', delta: 2 }]),
         A('humble', `It hurts. Our fans deserved better, and I'll own that.`, [{ kind: 'mediaRep', delta: 4 }, { kind: 'security', delta: -1 }]),
         A('deflect', `It's one game. We have a lot of season left.`, [{ kind: 'mediaRep', delta: -1 }]),

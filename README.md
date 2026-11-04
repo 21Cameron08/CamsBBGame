@@ -226,6 +226,25 @@ Production build: `npm run build`, then `npm run preview` (or host the `dist/` f
   - **1×, 2× and 4× speed**, pause (Space), next (→) and **skip** (Esc), plus a **replay** button on the Bracket page
   - your Selection Sunday press conference follows the show
 - **Awards**: National POY, All-American teams, Freshman of the Year, DPOY, Coach of the Year, conference POYs, Final Four MOP.
+- **Rivalries 2.0** (sidebar → **Rivalries**):
+  - every rivalry has **heat** (Lukewarm, Heated, Bitter, Blood Feud). Close games, upsets, ranked showdowns, conference tournament and NCAA meetings, and snapped streaks heat it up. When one side dominates or the teams stop meeting, it cools off.
+  - about 100 historic rivalries never die; they cool back toward their traditional level
+  - **new rivalries are born** from:
+    - NCAA Tournament grudges
+    - conference powers that keep meeting with the league on the line
+    - your games that keep coming down to the wire
+    - a coach leaving one school for another (yours included: your old school becomes a rival)
+    - star transfers, and recruiting wars you lose
+  - born rivalries get generated names (like "The Battle for Texas" or "The Lawson Bowl") and **fade** if they go cold
+  - **series records, streaks, meeting history and biggest wins** for every rivalry, plus a heat-by-season chart
+  - **rivalry trophies** go to the winner of every meeting. Yours hang on the History screen, and taking one back triggers a celebration.
+  - rivalry games are louder (home crowd boost scales with heat). Wins bring hype, morale and job security; losing streaks to a rival cost you.
+  - **Rivalry Week**:
+    - headlines when the hottest rivalries meet
+    - a banner on the Rivalries page and a rivalry strip on the dashboard and pregame screens
+    - a Rivalry Corner on the radio show, with trash-talking callers from the rival town
+  - the press asks about trophies, streaks, new rivalries and facing your old school
+  - hot born rivalries get scheduled as non-conference games, and they show up in your Scheduling Office
 - **Programs & Coaches** (sidebar), a stats hub for the whole league since your dynasty began:
   - **Program leaderboards** with five views:
     - Overview: seasons, W-L, NCAA bids, Sweet 16s, Final Fours, titles, weeks at No. 1, pros produced
@@ -312,6 +331,7 @@ src/
     press.ts       press conferences: question pools, reporters, media memory and follow-ups
     radio.ts       Full Court Fanatics: weekly fan radio episodes, locks, predictions, offseason specials
     pstats.ts      program and coach stats: per-season tracking, retired/fired coaches, head-to-head, summaries and scores
+    rivalry.ts     Rivalries 2.0: heat, series, trophies, born/faded rivalries, rivalry week
     events.ts / media.ts   story events, news & social
     staff.ts       coaching staff: market, effects, contracts, poaching, coaching tree
     scheduling.ts  Scheduling Office: Feast Week events, booking rules, guarantees, series, résumé meter

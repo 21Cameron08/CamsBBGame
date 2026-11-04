@@ -664,7 +664,8 @@ export type Moment =
   | { kind: 'fired' }
   | { kind: 'award'; label: string; personId: string }
   | { kind: 'portalDay'; day: number; results: { playerId: string; teamId: string; won: boolean }[] }
-  | { kind: 'selection'; season: number; press?: PressConference | null };
+  | { kind: 'selection'; season: number; press?: PressConference | null }
+  | { kind: 'rivalry'; key: string; teamId: string; oppId: string; label: string; sub: string; trophy?: string };
 
 export interface GameState {
   version: number;
@@ -705,6 +706,8 @@ export interface GameState {
   staff?: StaffState;
   /** jerseys retired during the dynasty (created on first use) */
   legacy?: { retired: Record<string, RetiredJersey[]> };
+  /** Rivalries 2.0: heat, series, trophies, born and faded rivalries (older saves start without it) */
+  rivals?: RivalryBook;
   /** program and coach stat tracking (older saves start without it) */
   pstats?: ProgramStatsState;
   /** Full Court Fanatics, the weekly fan radio show (older saves start without it) */
@@ -1004,3 +1007,38 @@ export interface ProgramStatsState {
   /** your record against each coach and each program */
   h2h: { coach: Record<string, [number, number]>; team: Record<string, [number, number]> };
 }
+
+// ---------------- Rivalries 2.0 ----------------
+export interface RivalryMeeting {
+  s: number; d: number;
+  /** winner and scores */
+  w: string; ws: number; ls: number;
+  t: GameType; ot?: boolean; ev?: string;
+}
+export interface Rivalry {
+  key: string; a: string; b: string;
+  name: string;
+  origin: 'historic' | 'born';
+  /** what started it (born rivalries) */
+  reason?: string;
+  /** season it became a rivalry (or tracking began) */
+  since: number;
+  /** 0-100 */
+  heat: number;
+  /** historic baseline heat it cools back toward */
+  floor: number;
+  /** false while it's still simmering (or after it has faded) */
+  active: boolean;
+  faded?: boolean;
+  /** dynasty-era wins by team id */
+  series: Record<string, number>;
+  streak?: { t: string; n: number };
+  meetings: RivalryMeeting[];
+  total: number;
+  trophy?: string;
+  holder?: string;
+  /** [season, heat at season's end] */
+  heatLog: [number, number][];
+  big?: { m: number; w: string; s: number };
+}
+export interface RivalryBook { pairs: Record<string, Rivalry>; since: number; weekNews?: number }

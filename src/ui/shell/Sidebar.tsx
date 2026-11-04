@@ -10,6 +10,7 @@ const ITEMS: { id: Screen; icon: string; label: string; section?: string }[] = [
   { id: 'development', icon: '🏋️', label: 'Player Development' },
   { id: 'staff', icon: '📋', label: 'Coaching Staff' },
   { id: 'schedule', icon: '📅', label: 'Schedule' },
+  { id: 'rivalries', icon: '🔥', label: 'Rivalries' },
   { id: 'recruiting', icon: '🎯', label: 'Recruiting', section: 'Build' },
   { id: 'offseason', icon: '🔁', label: 'Portal & Offseason' },
   { id: 'nil', icon: '💰', label: 'NIL Office' },

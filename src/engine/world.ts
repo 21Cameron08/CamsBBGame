@@ -20,6 +20,7 @@ import { welcomeInbox } from './events';
 import { initStaff, staffWelcomeInbox } from './staff';
 import { airEpisode } from './radio';
 import { pstatsState } from './pstats';
+import { ensureRivalries } from './rivalry';
 
 export const START_SEASON = 2026;
 export const SAVE_VERSION = 2;
@@ -173,6 +174,7 @@ export function createWorld(opts: NewGameOptions): GameState {
   state.user.press = introPresser(state);
   state.rngState = rng.state;
   pstatsState(state);
+  ensureRivalries(state);
   airEpisode(state, 'preview', { debut: true });
   return state;
 }

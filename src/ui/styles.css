@@ -506,3 +506,18 @@ input[type='range'] { accent-color: var(--accent); width: 100%; }
 .pc-medal { font-size: 26px; flex: none; }
 .pill.link { cursor: pointer; }
 .pill.link:hover { background: rgba(255, 255, 255, 0.14); }
+
+/* ---------- Rivalries ---------- */
+.heat-bar { display: inline-block; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; vertical-align: middle; }
+.heat-bar > i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #f6c94c, #ff8a3d 55%, #ff3d3d); box-shadow: 0 0 10px rgba(255, 90, 40, .45); }
+.heat-label { font-weight: 800; letter-spacing: .02em; white-space: nowrap; }
+.heat-label.bad { color: #ff6b5b; }
+.heat-label.accent { color: #ff9b52; }
+.heat-label.gold { color: var(--gold); }
+.riv-card { position: relative; overflow: hidden; padding: 14px 16px; cursor: pointer; }
+.riv-card-bg { position: absolute; inset: 0; opacity: .22; background: linear-gradient(110deg, var(--c1) 0%, transparent 45%, transparent 55%, var(--c2) 100%); pointer-events: none; }
+.riv-hero { position: relative; overflow: hidden; padding: 22px 26px; }
+.riv-hero-bg { position: absolute; inset: 0; }
+.riv-week { display: flex; align-items: center; gap: 14px; padding: 14px 18px; cursor: pointer; border-color: rgba(255, 110, 50, .55); background: linear-gradient(90deg, rgba(255, 90, 40, .16), rgba(255,255,255,.02)); }
+.riv-week-tag { font-size: 11px; font-weight: 900; letter-spacing: .16em; color: #fff; background: linear-gradient(90deg, #ff3d3d, #ff8a3d); padding: 5px 10px; border-radius: 6px; box-shadow: 0 0 16px rgba(255, 70, 40, .5); animation: onair 1.8s ease-in-out infinite; }
+.riv-strip { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 14px; margin-top: 14px; padding: 8px 14px; border-radius: 12px; background: rgba(0,0,0,.35); border: 1px solid rgba(255, 110, 50, .35); }

@@ -9,11 +9,11 @@ import { teamPlayers } from './team';
 import { spread } from './rankings';
 import { loreOf } from '../data/lore';
 import { FIRST_NAMES } from '../data/names';
-import { RIVALRIES } from '../data/rivalries';
 import { classRankings } from './recruiting';
 import { recordBook } from './records';
 import { seasonLabel } from './calendar';
 import { normCdf } from './sim';
+import { rivalryOf as activeRivalry, rivalriesOf, userRivalryThisWeek, heatInfo, seriesFor } from './rivalry';
 
 export const SHOW = { name: 'Full Court Fanatics', station: '98.7 The Hoop', slot: 'Monday nights', tagline: 'Two guys. Zero chill. All takes.' };
 export const HOSTS: Record<RadioHost, { name: string; nick: string; short: string; seed: string; colors: [string, string]; bio: string }> = {
@@ -126,8 +126,8 @@ function upcoming(state: GameState): ScheduledGame[] {
   const now = inWeek(wk);
   return now.length >= 3 ? now : [...now, ...inWeek(wk + 1)];
 }
-function rivalryOf(a: string, b: string) {
-  return RIVALRIES.find((x) => (x.a === a && x.b === b) || (x.a === b && x.b === a));
+function rivalryOf(state: GameState, a: string, b: string) {
+  return activeRivalry(state, a, b);
 }
 function callerName(c: Ctx, local = 0.45): string {
   const first = c.r.pick(FIRST_NAMES);
@@ -419,7 +419,7 @@ function yoursSeg(c: Ctx): RadioSegment {
     const opp = state.teams[next.home === U.id ? next.away : next.home];
     const home = next.home === U.id && !next.neutral;
     const line = spread(state, next.home, next.away, next.neutral) * (next.home === U.id ? 1 : -1);
-    const rv = rivalryOf(U.id, opp.id);
+    const rv = rivalryOf(state, U.id, opp.id);
     lines.push(D(`Next up: ${opp.apRank ? `No. ${opp.apRank} ` : ''}${opp.school}${home ? ' at home' : next.neutral ? ' on a neutral floor' : ' on the road'}.${rv ? ` ${rv.name ?? 'Rivalry game'}.` : ''} ${line > 0.5 ? `${U.school} by about ${Math.round(line)} in my numbers.` : line < -0.5 ? `${opp.school} by about ${Math.round(-line)} in my numbers.` : 'Coin flip.'}`));
     lines.push(r.pick([
       S(`${U.school} by twenty. Easy. I'm never wrong.`, line < -6 ? 'bad' : 'hot'),
@@ -478,7 +478,7 @@ const CALLS: ((c: Ctx, who: string) => RadioLine[] | null)[] = [
   (c, who) => { const p = scorers(c.state, 4)[0]; return p ? [C(who, `${nm(p)} is the best player I've ever seen, and I've been watching since they used peach baskets.`, 'hot'), D(`He's averaging ${f1(ppg(p))}. He's good.`), S(`Peach baskets? How old are you?`), C(who, `Ninety-one. Don't change the subject.`)] : null; },
   (_c, who) => [C(who, `I want to defend the zone.`), S(`Nobody wants to hear this.`), C(who, `It's beautiful, Sal. It's like a hug, but for the paint.`), D(`That's... actually not bad.`, 'good')],
   (c, who) => { const p = userStar(c.state, c.U); return p && p.stats.gp >= 3 ? [C(who, `${c.U.school} needs to get the ball to ${p.last} every single possession.`, 'bad'), D(`He's already taking ${Math.round((p.stats.fga / Math.max(1, gp(c.U))) * 10) / 10} shots a game.`), C(who, `Make it a hundred.`)] : null; },
-  (c, who) => { const r = RIVALRIES.find((x) => x.a === c.U.id || x.b === c.U.id); const o = r ? c.state.teams[r.a === c.U.id ? r.b : r.a] : undefined; return o ? [C(who, `I just want to say I can't stand ${o.school}. That's it. That's the call.`), S(`Beautiful. Thank you. Next caller.`)] : null; },
+  (c, who) => { const r = rivalriesOf(c.state, c.U.id)[0]; const o = r ? c.state.teams[r.a === c.U.id ? r.b : r.a] : undefined; return o ? [C(who, `I just want to say I can't stand ${o.school}. That's it. That's the call.`), S(`Beautiful. Thank you. Next caller.`)] : null; },
   (_c, who) => [C(who, `Sal, I named my fantasy team after you.`), S(`Aw! What's it called?`), C(who, `"Wrong Again."`)],
   (_c, who) => [C(who, `Every team should be allowed one player over forty.`, 'bad'), S(`Are you over forty?`), C(who, `I'm available Tuesdays and Thursdays.`)],
   (c, who) => { const up = lastWeek(c.state).map((g) => result(c.state, g)).find((x) => x.l.apRank && !x.w.apRank); return up ? [C(`${who.split(' in ')[0]} in ${up.w.city}`, `${up.w.school} fan here. We stormed the court and I lost a shoe. Worth it.`), S(`Did you get the shoe back?`), C(`${who.split(' in ')[0]} in ${up.w.city}`, `No. If anybody finds a size 13 by the scorer's table, it's mine.`)] : null; },
@@ -486,6 +486,73 @@ const CALLS: ((c: Ctx, who: string) => RadioLine[] | null)[] = [
   (_c, who) => [C(who, `Dex, what's the most important stat in basketball?`), D(`Points per possession, adjusted for opponent.`, 'good'), S(`Wrong. It's heart.`), D(`Heart isn't tracked.`), S(`That's why you can't see it, Dex.`)],
   (_c, who) => [C(who, `I've been to every home game for thirty-one years.`), S(`Respect.`), C(who, `I just wanted to say that. Also my seats are terrible.`)],
 ];
+
+function rivalrySeg(c: Ctx): RadioSegment | null {
+  const { state, r, U } = c;
+  const lines: RadioLine[] = [];
+  const opp = (rv: { a: string; b: string }) => state.teams[rv.a === U.id ? rv.b : rv.a];
+  // 1. your rivalry game is this week
+  const wk = IN_SEASON.includes(state.phase) ? userRivalryThisWeek(state) : undefined;
+  if (wk && fresh(c, `rw:${wk.g.id}`)) {
+    use(c, `rw:${wk.g.id}`);
+    const rv = wk.r, o = opp(rv);
+    const [w, l] = seriesFor(rv, U.id);
+    const h = heatInfo(rv.heat);
+    lines.push(S(r.pick([`It's RIVALRY WEEK, people! ${rv.name}! ${U.school} and ${o.school}!`, `Clear your schedules. ${rv.name} is this week, and I've been waiting all year.`, `${U.school}. ${o.school}. ${rv.name}. I'm already sweating.`]), 'hot'));
+    lines.push(D(`The heat meter says ${h.label.toLowerCase()}. ${w + l ? `Since ${rv.since}, ${U.school} is ${w}-${l} in this series.` : `First meeting since we started keeping score.`}${rv.streak && rv.streak.n >= 2 ? ` ${state.teams[rv.streak.t].school} has won ${rv.streak.n} straight.` : ''}`, 'info'));
+    if (rv.trophy) lines.push(D(rv.holder ? `${rv.trophy} is sitting in ${state.teams[rv.holder].school}'s building right now.` : `${rv.trophy} is up for grabs.`), S(rv.holder && rv.holder !== U.id ? `Go get it back! Bring the trophy home!` : `Keep it right where it is!`));
+    const caller = `${r.pick(FIRST_NAMES)} in ${o.city}`;
+    const [call, reply] = r.pick([
+      [`${o.school} fan here. Enjoy the week, because you're losing on Saturday.`, `Sir, this is a ${U.mascot} show. Respectfully, hang up.`],
+      [`I just want everybody in ${U.city} to know we're coming. Bring tissues.`, `I love the confidence. I hate everything else about it.`],
+      [`${U.school}? Overrated. Every year. I'll be at the game in my lucky shirt.`, `Lucky shirt! Has it been washed since 2009?`],
+      [`I painted my dog in ${o.school} colors for this one.`, `Leave the dog out of this, sir. The dog is innocent.`],
+    ]);
+    lines.push(C(caller, call, 'hot'));
+    lines.push(S(reply));
+    lines.push(S(r.pick([`${U.school} by double digits. Write it down.`, `I'm calling it now: ${U.school}, and the place goes crazy.`, `Gut says ${U.school}. Heart says ${U.school}. Stomach says nachos.`]), 'hot'));
+    head(c, 7, `Rivalry Week: ${rv.name}`);
+    return { title: 'Rivalry Corner', icon: '🔥', lines };
+  }
+  // 2. you just played a rival
+  const since = state.radio?.lastDay ?? 0;
+  const just = rivalriesOf(state, U.id).map((rv) => ({ rv, m: rv.meetings[rv.meetings.length - 1] })).find((x) => x.m && x.m.s === state.season && x.m.d >= since && fresh(c, `rr:${x.rv.key}:${x.m.d}`));
+  if (just) {
+    use(c, `rr:${just.rv.key}:${just.m.d}`);
+    const rv = just.rv, o = opp(rv), won = just.m.w === U.id;
+    const [w, l] = seriesFor(rv, U.id);
+    lines.push(won ? S(r.pick([`${U.school} beat ${o.school}! ${just.m.ws}-${just.m.ls}! I'm still yelling!`, `Bragging rights! ${U.school} takes ${rv.name}, ${just.m.ws}-${just.m.ls}!`]), 'hot') : S(r.pick([`${U.school} lost to ${o.school}. I need a minute. I need several minutes.`, `${o.school} wins ${rv.name}, ${just.m.ws}-${just.m.ls}. I'm not okay, Dex.`])));
+    lines.push(D(`The series since ${rv.since} is ${w}-${l}${rv.streak && rv.streak.n >= 2 ? `, and ${state.teams[rv.streak.t].school} has won ${rv.streak.n} straight` : ''}.${rv.trophy && rv.holder ? ` ${rv.trophy} belongs to ${state.teams[rv.holder].school}.` : ''}`, 'info'));
+    if (!won) lines.push(C(`${r.pick(FIRST_NAMES)} in ${o.city}`, `Just calling to say hi. How's everybody in ${U.city} doing today?`, 'hot'), S(`Click. Next caller. NEXT CALLER.`));
+    head(c, 6, won ? `${U.school} wins ${rv.name}` : `${o.school} wins ${rv.name}`);
+    return { title: 'Rivalry Corner', icon: '🔥', lines };
+  }
+  // 3. a new rivalry is born
+  const born = Object.values(state.rivals?.pairs ?? {}).filter((rv) => rv.active && rv.origin === 'born' && rv.since >= state.season - 1 && fresh(c, `born:${rv.key}`))
+    .sort((a, b) => Number(b.a === U.id || b.b === U.id) - Number(a.a === U.id || a.b === U.id) || b.heat - a.heat)[0];
+  if (born) {
+    use(c, `born:${born.key}`);
+    const A = state.teams[born.a], B = state.teams[born.b];
+    const mine = born.a === U.id || born.b === U.id;
+    lines.push(D(`We have a new rivalry, folks: ${born.name}. ${A.school} and ${B.school}.`, 'info'));
+    if (born.reason) lines.push(D(born.reason));
+    lines.push(mine ? S(`And it involves US! I love it. I hate them already. I've hated them for minutes and it feels like years.`, 'hot') : S(r.pick([`Beautiful. College basketball needs more people who can't stand each other.`, `Give it a trophy! Give it a trophy right now!`])));
+    head(c, 5, `A rivalry is born: ${born.name}`);
+    return { title: 'Rivalry Corner', icon: '🔥', lines };
+  }
+  // 4. the hottest game in the country this week
+  if (IN_SEASON.includes(state.phase)) {
+    const hot = upcoming(state).map((g) => ({ g, rv: rivalryOf(state, g.home, g.away) })).filter((x) => x.rv && x.rv.heat >= 70).sort((a, b) => b.rv!.heat - a.rv!.heat)[0];
+    if (hot && fresh(c, `hot:${hot.g.id}`)) {
+      use(c, `hot:${hot.g.id}`);
+      const h = state.teams[hot.g.home], a = state.teams[hot.g.away];
+      lines.push(D(`Hottest rivalry game in the country this week: ${a.school} at ${h.school}. ${hot.rv!.name}. ${heatInfo(hot.rv!.heat).label}.`, 'info'));
+      lines.push(S(r.pick([`I'd sell my car for a ticket to that one. Not a good car. But a car.`, `${h.school} at home in that one? Forget it. That building will be shaking.`, `Upset alert! I don't know who the underdog is, but upset alert!`]), 'hot'));
+      return { title: 'Rivalry Corner', icon: '🔥', lines };
+    }
+  }
+  return null;
+}
 
 /** calls about the user's team come from the user's town */
 const LOCAL_CALLS = new Set([0, 1, 7, 10, 11, 15]);
@@ -598,7 +665,7 @@ function locksSeg(c: Ctx): RadioSegment | null {
   const games = upcoming(state).filter((g) => state.teams[g.home] && state.teams[g.away] && !taken.has(g.id));
   const interest = (g: ScheduledGame) => {
     const h = state.teams[g.home], a = state.teams[g.away];
-    return (g.home === U.id || g.away === U.id ? 40 : 0) + (h.apRank ? 30 - h.apRank : 0) + (a.apRank ? 30 - a.apRank : 0) + (rivalryOf(g.home, g.away) ? 15 : 0) - Math.abs(spread(state, g.home, g.away, g.neutral));
+    return (g.home === U.id || g.away === U.id ? 40 : 0) + (h.apRank ? 30 - h.apRank : 0) + (a.apRank ? 30 - a.apRank : 0) + (rivalryOf(state, g.home, g.away) ? 15 : 0) - Math.abs(spread(state, g.home, g.away, g.neutral));
   };
   const top = games.sort((a, b) => interest(b) - interest(a)).slice(0, 4);
   if (top.length >= 2) {
@@ -770,6 +837,8 @@ function previewEpisode(c: Ctx, debut: boolean): RadioSegment[] {
     ul.push(D(`My model projects ${f1(exp)} regular-season wins. Call it ${line}.`, 'good'), S(r.pick([`Over. Smash the over.`, `Over. I always take the over. It's a lifestyle.`, line >= 22 ? `Under. Gasp! Yes, under. Somebody's gonna slip on a banana peel.` : `Over by five. Book it.`]), 'hot'));
   }
   segs.push({ title: `${U.school} Preview`, icon: '🏠', lines: ul });
+  const rs = rivalrySeg(c);
+  if (rs) segs.push(rs);
   const poll = ranked(state).slice(0, 5);
   if (poll.length === 5) segs.push({ title: 'Preseason Top 5', icon: '📊', lines: [D(`Your preseason top five: ${poll.map((t, i) => `${i + 1}. ${t.school}`).join(', ')}.`, 'info'), S(r.pick([`I'd move ${poll[3].school} to No. 1 and I'd sleep like a baby.`, `${poll[0].school} at No. 1? In October? Bold, voters. Bold.`]), 'hot')] });
   segs.push(outroSeg(c, [S(`Predictions are locked in. No take-backs.`), D(`I wrote them down. In pen.`)]));
@@ -916,6 +985,7 @@ function weeklyEpisode(c: Ctx, debut: boolean): RadioSegment[] {
     add(bracketSeg(c));
     add(recapSeg(c));
     add(yoursSeg(c));
+    add(rivalrySeg(c));
     add(spotlightSeg(c));
     add(hotlineSeg(c));
     add(locksSeg(c));
@@ -923,6 +993,7 @@ function weeklyEpisode(c: Ctx, debut: boolean): RadioSegment[] {
     add(pollSeg(c));
     add(state.phase === 'confTourney' ? bubbleSeg(c) : recapSeg(c));
     add(yoursSeg(c));
+    add(rivalrySeg(c));
     const rotating = r.shuffle([() => spotlightSeg(c), () => hotlineSeg(c), () => triviaSeg(c), () => recruitingSeg(c), () => recapSeg(c)].slice(0, state.phase === 'confTourney' ? 5 : 4));
     let n = 0;
     for (const f of rotating) { if (n >= 2) break; const s = f(); if (s && s.lines.length && !segs.some((x) => x.title === s.title)) { segs.push(s); n++; } }

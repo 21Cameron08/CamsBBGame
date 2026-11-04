@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { BoxScore, GameState, ScheduledGame } from '../engine/types';
 import { createWorld, type NewGameOptions } from '../engine/world';
-import { processDay, nextDay, userGameToday, applyGameResult, simGame, isRivalry } from '../engine/season';
+import { processDay, nextDay, userGameToday, applyGameResult, simGame } from '../engine/season';
 import { advanceOffseason, takeJob } from '../engine/offseason';
 import { GameSim } from '../engine/sim';
 import { simSetup } from '../engine/team';
@@ -18,10 +18,11 @@ import { playbookState } from '../engine/schemes';
 import { loreOf } from '../data/lore';
 import { ensureRadio } from '../engine/radio';
 import { ensurePstats } from '../engine/pstats';
+import { ensureRivalries, rivalCrowd } from '../engine/rivalry';
 
 export type Screen =
   | 'home' | 'roster' | 'staff' | 'schedule' | 'recruiting' | 'portal' | 'nil' | 'rankings' | 'standings' | 'bracket'
-  | 'media' | 'stats' | 'coach' | 'inbox' | 'offseason' | 'settings' | 'history' | 'development' | 'records' | 'radio' | 'programs';
+  | 'media' | 'stats' | 'coach' | 'inbox' | 'offseason' | 'settings' | 'history' | 'development' | 'records' | 'radio' | 'programs' | 'rivalries';
 
 export type Modal =
   | { kind: 'player'; id: string }
@@ -30,7 +31,8 @@ export type Modal =
   | { kind: 'box'; gameId: string }
   | { kind: 'pregame'; gameId: string }
   | { kind: 'program'; id: string }
-  | { kind: 'coach'; id: string };
+  | { kind: 'coach'; id: string }
+  | { kind: 'rivalry'; id: string };
 
 export interface Toast { id: number; text: string; kind: 'info' | 'good' | 'bad' }
 
@@ -124,6 +126,7 @@ export const useGame = create<Store>((set, get) => ({
     const migrated = migrateStaff(g);
     ensureDevelopment(g);
     ensurePstats(g);
+    ensureRivalries(g);
     ensureRadio(g);
     recordBook(g);
     playbookState(g);
@@ -190,9 +193,8 @@ export const useGame = create<Store>((set, get) => ({
     const game = userGameToday(g);
     if (!game) return;
     const home = g.teams[game.home], away = g.teams[game.away];
-    const rv = isRivalry(game.home, game.away);
     const sim = new GameSim(simSetup(g, home), simSetup(g, away), {
-      neutral: game.neutral, pbp: true, crowd: clamp(home.hype / 100 + (rv ? 0.25 : 0), 0, 1), tourney: game.type === 'ncaa',
+      neutral: game.neutral, pbp: true, crowd: clamp(home.hype / 100 + rivalCrowd(g, game.home, game.away), 0, 1), tourney: game.type === 'ncaa',
       flavor: (() => { const l = loreOf(home.id); return l ? { crowd: l.crowd, closer: l.closer } : undefined; })(),
     });
     const userSide = game.home === g.user.teamId ? 0 : 1;

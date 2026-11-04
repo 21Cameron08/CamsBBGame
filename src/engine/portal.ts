@@ -11,6 +11,7 @@ import { gainXp } from './coach';
 import { staffEffects } from './staff';
 import { milesBetween, PLACES } from '../data/places';
 import { seasonLabel } from './calendar';
+import { rivalryTransfer } from './rivalry';
 
 export const PORTAL_DAYS = 6;
 export const PORTAL_ACTIONS = {
@@ -573,6 +574,7 @@ function commit(state: GameState, e: PortalEntry, o: PortalOffer) {
   const others = e.offers.filter((x) => x.teamId !== t.id).map((x) => state.teams[x.teamId]?.school).filter(Boolean).slice(0, 2);
   const userWon = isUser(state, t.id);
   const userInvolved = e.offers.some((x) => isUser(state, x.teamId)) || e.from === state.user.teamId;
+  if ((e.stars >= 5 || (userInvolved && e.stars >= 4)) && e.from && e.from !== t.id) rivalryTransfer(state, e.from, t.id, `${p.first} ${p.last}`, userInvolved);
   if (e.stars >= 4 || userInvolved) {
     feed(ps, { kind: 'commit', text: `${'★'.repeat(e.stars)} ${p.first} ${p.last} commits to ${t.school}${others.length ? ` over ${others.join(' and ')}` : ''}. (${fmtMoney(o.nil)} NIL)`, playerId: p.id, teamId: t.id, big: userWon || e.stars === 5 });
     addNews(state, { kind: 'portal', headline: `${p.first} ${p.last} commits to ${t.school} out of the portal`, body: `The ${p.pos} from ${fromSchool} chose ${t.school}${others.length ? ` over ${others.join(' and ')}` : ''}. NIL deal reportedly worth ${fmtMoney(o.nil)}.`, teams: [t.id], important: userWon, personId: p.id, personKind: 'player' });

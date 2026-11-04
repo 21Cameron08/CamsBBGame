@@ -20,6 +20,7 @@ import { beginSeasonEnd } from './offseason';
 import { autoSignUnsigned } from './nil';
 import { staffEffects, resolvePoach, applyStaffRenewChoice } from './staff';
 import { radioWeekly } from './radio';
+import { rivalryOf, rivalCrowd, rivalryResult, rivalryWeek, rivalryRecruit } from './rivalry';
 
 export function isUserGame(state: GameState, g: ScheduledGame) {
   return g.home === state.user.teamId || g.away === state.user.teamId;
@@ -33,8 +34,9 @@ export function nextUserGame(state: GameState): ScheduledGame | undefined {
   return state.schedule.filter((g) => !g.played && isUserGame(state, g)).sort((a, b) => a.day - b.day)[0];
 }
 
-export function isRivalry(a: string, b: string) {
-  return RIVALRIES.find((r) => (r.a === a && r.b === b) || (r.a === b && r.b === a));
+/** an active rivalry between two schools (historic or born in the dynasty) */
+export function isRivalry(state: GameState, a: string, b: string) {
+  return rivalryOf(state, a, b);
 }
 
 function gameScore(p: { pts: number; fgm: number; fga: number; fta: number; ftm: number; orb: number; drb: number; ast: number; stl: number; blk: number; tov: number; pf: number }) {
@@ -43,9 +45,8 @@ function gameScore(p: { pts: number; fgm: number; fga: number; fta: number; ftm:
 
 export function simGame(state: GameState, g: ScheduledGame): BoxScore {
   const home = state.teams[g.home], away = state.teams[g.away];
-  const rv = isRivalry(g.home, g.away);
   return simulateGame(simSetup(state, home), simSetup(state, away), {
-    neutral: g.neutral, crowd: clamp(home.hype / 100 + (rv ? 0.25 : 0), 0, 1), tourney: g.type === 'ncaa',
+    neutral: g.neutral, crowd: clamp(home.hype / 100 + rivalCrowd(state, g.home, g.away), 0, 1), tourney: g.type === 'ncaa',
   });
 }
 
@@ -123,6 +124,7 @@ export function applyGameResult(state: GameState, g: ScheduledGame, box: BoxScor
   });
   if (potg) g.potg = (potg as { id: string }).id;
   recordGame(state, g, box);
+  rivalryResult(state, g, preApH, preApA);
 
   // store box scores for notable games
   const notable = isUser || (preApH && preApA) || g.type === 'ncaa';
@@ -153,7 +155,7 @@ export function applyGameResult(state: GameState, g: ScheduledGame, box: BoxScor
     const surprise = (won ? 1 : -1) * (won ? Math.max(0, -expectedMargin) : Math.max(0, expectedMargin));
     coach.jobSecurity = clamp(coach.jobSecurity + (won ? 0.4 : -0.5) + surprise * 0.08, 0, 100);
     // press conference
-    const big = !!oppRank || !!isRivalry(g.home, g.away) || g.type !== 'nc' && g.type !== 'conf' || Math.abs(user.record.streak) >= 4 || (!won && expectedMargin > 6) || (won && expectedMargin < -5);
+    const big = !!oppRank || !!isRivalry(state, g.home, g.away) || g.type !== 'nc' && g.type !== 'conf' || Math.abs(user.record.streak) >= 4 || (!won && expectedMargin > 6) || (won && expectedMargin < -5);
     if (state.settings.autoPress || big || rng.chance(0.3)) {
       state.user.press = postgamePresser(state, g, box);
     }
@@ -247,6 +249,7 @@ export function weeklyTick(state: GameState, week: number) {
   refreshRecruitInterest(state);
   for (const r of commits) {
     commitNews(state, r, r.committed!);
+    if (r.decision?.userStatus === 'lost' && r.stars >= 4 && r.committed) rivalryRecruit(state, r.committed, `${r.first} ${r.last}`, r.stars);
     const userInvolved = r.schools.some((s) => s.teamId === state.user.teamId && s.offered);
     if (userInvolved || r.committed === state.user.teamId) {
       state.user.moments.push({ kind: 'commit', recruitId: r.id, teamId: r.committed!, others: [r.committed!, ...(userInvolved ? [state.user.teamId] : []), ...(r.decision?.odds.map((o) => o.teamId) ?? []), ...r.schools.map((s) => s.teamId)].filter((id, i, a) => a.indexOf(id) === i).slice(1, 4) });
@@ -266,7 +269,8 @@ export function weeklyTick(state: GameState, week: number) {
     p.morale = clamp(p.morale + (65 - p.morale) * 0.04, 0, 100);
     if (p.teamId === state.user.teamId && !p.nil && p.ovr >= 55) p.morale = clamp(p.morale - 2, 0, 100);
     if (p.stats.gp) p.followers = Math.round(p.followers * (1 + Math.min(0.04, (p.stats.pts / p.stats.gp) * 0.0012)));
-  }  // the weekly fan radio show
+  }  // rivalry week headlines, then the weekly fan radio show
+  if (state.phase === 'regular' || state.phase === 'confTourney') rivalryWeek(state);
   radioWeekly(state);
 }
 

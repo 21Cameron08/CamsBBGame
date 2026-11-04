@@ -8,6 +8,7 @@ import { seasonLabel } from '../../engine/calendar';
 import { inkOn } from '../color';
 import { loreOf, preDynastyTitles } from '../../engine/legacy';
 import { ProgramStory, RingOfHonor } from '../components/Legacy';
+import { rivalriesOf } from '../../engine/rivalry';
 
 const TROPHY_ICON: Record<Trophy['kind'], string> = { natl: '🏆', f4: '🥇', e8: '🎖️', s16: '🏅', conf: '🏟️', ctourn: '✂️', coy: '🧢' };
 
@@ -202,6 +203,27 @@ export function HistoryScreen() {
         </div>
 
         <div className="col" style={{ gap: 16 }}>
+          {rivalriesOf(g, team.id).some((r) => r.trophy) && (
+            <Section title="Rivalry Trophies" right={<button className="btn sm ghost" onClick={() => useGame.getState().nav('rivalries')}>Rivalries →</button>}>
+              <div className="col" style={{ gap: 6 }}>
+                {rivalriesOf(g, team.id).filter((r) => r.trophy).map((r) => {
+                  const opp = g.teams[r.a === team.id ? r.b : r.a];
+                  const mine = r.holder === team.id;
+                  return (
+                    <div key={r.key} className="row click" style={{ gap: 10, padding: '6px 8px', borderRadius: 10, cursor: 'pointer', background: mine ? 'rgba(246,201,76,.1)' : 'rgba(255,255,255,.03)', border: `1px solid ${mine ? 'rgba(246,201,76,.4)' : 'var(--line)'}` }} onClick={() => open({ kind: 'rivalry', id: r.key })}>
+                      <span style={{ fontSize: 22, filter: mine ? undefined : 'grayscale(1) opacity(.5)' }}>🏆</span>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div className="small b ellipsis">{r.trophy}</div>
+                        <div className="tiny muted ellipsis">vs {opp.school} · {r.name}</div>
+                      </div>
+                      <span className={`tiny b ${mine ? '' : 'muted'}`} style={{ color: mine ? 'var(--gold)' : undefined }}>{mine ? 'IN OUR CASE' : r.holder ? `Held by ${g.teams[r.holder]?.abbr}` : 'Up for grabs'}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </Section>
+          )}
+
           <Section title="Your Trophy Case">
             <div className="row" style={{ marginBottom: 12 }}>
               <CoachFace c={coach} size={56} team={team} />

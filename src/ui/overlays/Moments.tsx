@@ -45,6 +45,10 @@ function MomentView({ g, m }: { g: GameState; m: Moment }) {
       const t = g.teams[m.teamId];
       return <TitleMoment team={t} label={m.label} onDone={dismiss} />;
     }
+    case 'rivalry': {
+      const t = g.teams[m.teamId], o = g.teams[m.oppId];
+      return <RivalryMoment team={t} opp={o} label={m.label} sub={m.sub} trophy={m.trophy} onDone={dismiss} />;
+    }
     case 'levelUp': {
       const c = g.coaches[g.user.coachId];
       return (
@@ -255,6 +259,27 @@ function PortalDayReveal({ g, m, onDone }: { g: GameState; m: Extract<Moment, { 
           })}
         </div>
         {all && <button className="btn primary lg" style={{ marginTop: 22 }} onClick={onDone}>Back to the portal</button>}
+      </motion.div>
+    </Shell>
+  );
+}
+
+function RivalryMoment({ team, opp, label, sub, trophy, onDone }: { team: Team; opp: Team; label: string; sub: string; trophy?: string; onDone: () => void }) {
+  useEffect(() => { sfx.fanfare(); sfx.crowd(1.4); }, []);
+  return (
+    <Shell colors={team.colors} onClose={onDone}>
+      <Confetti colors={[team.colors[0], team.colors[1], '#ff8a3d', '#f6c94c']} count={200} duration={5000} />
+      <motion.div initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 170, damping: 13 }} style={{ textAlign: 'center', maxWidth: 760 }}>
+        <div className="riv-week-tag" style={{ display: 'inline-block', marginBottom: 14 }}>RIVALRY WIN</div>
+        <div className="row" style={{ justifyContent: 'center', gap: 26, alignItems: 'center' }}>
+          <motion.div initial={{ x: -60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.15 }}><TeamLogo team={team} size={120} /></motion.div>
+          <motion.div animate={{ y: [0, -10, 0], rotate: [0, -4, 4, 0] }} transition={{ repeat: Infinity, duration: 2.2 }} style={{ fontSize: 84 }}>🏆</motion.div>
+          <motion.div initial={{ x: 60, opacity: 0 }} animate={{ x: 0, opacity: 0.45 }} transition={{ delay: 0.15 }} style={{ filter: 'grayscale(.7)' }}><TeamLogo team={opp} size={90} /></motion.div>
+        </div>
+        {trophy && <div className="eyebrow" style={{ marginTop: 14, color: '#ffd27a' }}>{trophy}</div>}
+        <div className="num" style={{ fontSize: 'clamp(34px, 6vw, 64px)', lineHeight: 1.02, marginTop: 6, textShadow: `0 0 36px ${team.colors[0]}` }}>{label.toUpperCase()}</div>
+        <div className="muted" style={{ marginTop: 10 }}>{sub}</div>
+        <button className="btn gold lg" style={{ marginTop: 22 }} onClick={onDone}>Hoist it 🏆</button>
       </motion.div>
     </Shell>
   );
