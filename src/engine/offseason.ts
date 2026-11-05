@@ -26,7 +26,7 @@ import { runAwards, stageAwardsNight } from './awards';
 import { finalizeProgramSeason, coachExit, recordClassRanks } from './pstats';
 import { rivalrySeasonEnd, rivalryCoachMove } from './rivalry';
 import { planRealignment, applyRealignment } from './realignment';
-import { seasonDonations, openFacilities, programBuild } from './facilities';
+import { seasonDonations, openFacilities, programBuild, aiFacilities } from './facilities';
 
 const NCAA_BONUS: Record<string, number> = { Champion: 30, 'Runner-up': 22, 'Final Four': 18, 'Elite Eight': 12, 'Sweet 16': 8, 'Round of 32': 4, 'Round of 64': 1, 'First Four': 0.5 };
 
@@ -122,6 +122,7 @@ export function beginSeasonEnd(state: GameState) {
   rivalrySeasonEnd(state);
   planRealignment(state);
   seasonDonations(state);
+  aiFacilities(state);
   // coaching carousel
   const carousel = runCarousel(state);
   state.user.fired = fired;

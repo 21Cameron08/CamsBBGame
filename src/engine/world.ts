@@ -34,6 +34,8 @@ export interface NewGameOptions {
   difficulty: Settings['difficulty'];
   /** conference realignment, chosen with difficulty */
   realignment?: Settings['realignment'];
+  /** AI programs build facilities too */
+  facilityRace?: boolean;
   /** custom team overrides (mods) keyed by team id */
   overrides?: Record<string, Partial<TeamDef>>;
 }
@@ -97,7 +99,7 @@ export function createWorld(opts: NewGameOptions): GameState {
       teamId: opts.teamId, coachId: '', hours: 40, hoursMax: 40, press: null, moments: [], board: [],
       expectation: '', expectationLevel: 0, offers: [], fired: false, retention: {}, scoutedTeams: [], achievements: [],
     },
-    settings: { difficulty: opts.difficulty, sound: true, liveSpeed: 1, autoPress: false, confirmAdvance: false, realignment: opts.realignment ?? 'realistic' },
+    settings: { difficulty: opts.difficulty, sound: true, liveSpeed: 1, autoPress: false, confirmAdvance: false, realignment: opts.realignment ?? 'realistic', facilityRace: opts.facilityRace ?? true },
     champions: [],
     log: [],
     offseason: null,

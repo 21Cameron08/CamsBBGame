@@ -497,6 +497,7 @@ export function decisionFactors(state: GameState, r: Recruit, aId: string, bId: 
       const [lat, lng] = recruitLatLng(r);
       label = `staying close to home (${Math.round(milesBetween(lat, lng, ta.lat, ta.lng))} mi vs ${Math.round(milesBetween(lat, lng, tb.lat, tb.lng))} mi)`;
     }
+    if (k === 'pro' && Math.abs(ta.facilities - tb.facilities) >= 1) label = `player development and facilities (${ta.facilities.toFixed(1)} vs ${tb.facilities.toFixed(1)})`;
     if (k === 'prestige') { const ga = r.stars * 18 - ta.prestige, gb = r.stars * 18 - tb.prestige; out.push({ key: k, edge: edge + ((gb > 20 ? (gb - 20) * 0.5 : 0) - (ga > 20 ? (ga - 20) * 0.5 : 0)) * 0.55, label }); continue; }
     out.push({ key: k, edge, label });
   }

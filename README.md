@@ -165,6 +165,12 @@ Production build: `npm run build`, then `npm run preview` (or host the `dist/` f
   - ultimatums during losing streaks
 - **Move money to NIL**: send fund money to this season's NIL pool (20% lost to fees, and the old guard won't love it)
 - ribbon-cutting celebrations when facilities open, a media-day question, and a ledger of every dollar
+- **Facilities arms race** (a setting chosen with difficulty when you start a dynasty, on by default; change it later in Settings → Preferences; older saves start with it off):
+  - AI programs raise money and build too. Big markets, winners, tournament teams and programs whose prestige has outrun their buildings break ground most often.
+  - every facility ages a little each year, yours included, so standing still means falling behind
+  - AI projects only move the facilities rating that recruits and transfers see; they don't change games
+  - the Facilities page ranks your conference by facilities rating, with each school's change since the race began, and lists who broke ground last offseason
+  - offseason headlines for big projects, flagged when a conference foe or rival builds
 
 ### 🏋️ Player development
 - **A development plan for every player.** Pick one of seven focuses:

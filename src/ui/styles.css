@@ -567,3 +567,5 @@ input[type='range'] { accent-color: var(--accent); width: 100%; }
 .fac-pip.pending { background: repeating-linear-gradient(45deg, #f6c94c 0 4px, rgba(246,201,76,.3) 4px 8px); animation: onair 1.6s ease-in-out infinite; }
 .fac-foot { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); margin-top: 12px; }
 .booster-row { gap: 12px; padding: 8px 10px; border-radius: 12px; background: rgba(255,255,255,.025); border: 1px solid var(--line); }
+.race-row { gap: 10px; padding: 5px 8px; border-radius: 10px; }
+.race-row.mine { background: color-mix(in srgb, var(--accent) 14%, transparent); }

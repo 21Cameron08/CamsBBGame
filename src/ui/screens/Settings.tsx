@@ -8,6 +8,7 @@ import { TEAMS } from '../../data/teams';
 import type { GameState, Team } from '../../engine/types';
 import { teamAccent } from '../color';
 import { REALIGN_INFO } from '../../engine/realignment';
+import { raceState } from '../../engine/facilities';
 import type { RealignMode } from '../../engine/types';
 
 type Tab = 'saves' | 'prefs' | 'logos' | 'editor';
@@ -120,6 +121,9 @@ function Prefs() {
         <div className="row" style={{ padding: '12px 0', gap: 12, borderTop: '1px solid var(--line)' }}>
           <div style={{ flex: 1 }}><div className="b">Conference realignment</div><div className="tiny muted">{REALIGN_INFO[g.settings.realignment ?? 'off'].desc} Changes apply from the next offseason.</div></div>
           <div className="seg">{(['off', 'realistic', 'chaos'] as RealignMode[]).map((m) => <button key={m} className={(g.settings.realignment ?? 'off') === m ? 'on' : ''} onClick={() => mutate((gg) => { gg.settings.realignment = m; })}>{REALIGN_INFO[m].label}</button>)}</div>
+        </div>
+        <div style={{ borderTop: '1px solid var(--line)' }}>
+          <Toggle on={!!g.settings.facilityRace} onChange={(v) => mutate((gg) => { gg.settings.facilityRace = v; if (v) raceState(gg); })} label="Facilities arms race" desc="AI programs raise money and build too, and every facility ages a little each year. It only moves the facilities rating recruits and transfers see. Changes apply at the end of the season." />
         </div>
       </Section>
       <Section title="Audio & Visual">

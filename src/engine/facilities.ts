@@ -5,7 +5,7 @@
 // strings attached. Only the upgrades you build give bonuses (what you inherit is already part of
 // the school's prestige), so AI programs and old saves stay balanced.
 import { clamp, rng } from './rng';
-import type { Booster, BoosterStyle, FacilityKey, FacilityProject, GameState, InboxChoice, ProgramBuild, Team } from './types';
+import type { Booster, BoosterStyle, FacRaceEntry, FacilityKey, FacilityProject, GameState, InboxChoice, ProgramBuild, Team } from './types';
 import type { StaffEffects } from './staff';
 import { FIRST_NAMES, LAST_NAMES } from '../data/names';
 import { addNews } from './media';
@@ -339,4 +339,69 @@ export function facilityGrade(pb: ProgramBuild): string {
 }
 export function underConstruction(pb: ProgramBuild, key: FacilityKey): FacilityProject | undefined {
   return pb.projects.find((p) => p.key === key);
+}
+
+// ---------------- the facilities arms race (a setting) ----------------
+/** yearly aging of every program's facilities rating */
+const AGING = 0.08;
+export function facilityRaceOn(state: GameState) { return !!state.settings.facilityRace; }
+/** how the news and the race board name a project */
+export const PROJECT_NOUN: Record<FacilityKey, string> = {
+  practice: 'practice facility', arena: 'arena renovation', medical: 'sports science center', lounge: 'locker room makeover',
+  film: 'film and analytics suite', recruiting: 'recruiting center', academic: 'academic center',
+};
+export function raceState(state: GameState) {
+  const R = (state.facRace ??= { base: {}, prestige: {}, log: [] });
+  R.prestige ??= {};
+  for (const t of Object.values(state.teams)) {
+    if (!(t.id in R.base)) R.base[t.id] = t.facilities;
+    if (!(t.id in R.prestige)) R.prestige[t.id] = t.prestige;
+  }
+  return R;
+}
+
+/**
+ * End of season: every AI program may build, and everyone's facilities age a little. A program
+ * aims to hold its starting standing, adjusted for how far its prestige has moved compared with
+ * the rest of the league; big markets, winners and tournament teams build more often. AI construction only moves the
+ * facilities rating that recruits and transfers see; it doesn't change games.
+ */
+export function aiFacilities(state: GameState) {
+  if (!facilityRaceOn(state)) return;
+  const R = raceState(state);
+  const uid = state.user.teamId;
+  const built: FacRaceEntry[] = [];
+  const teams = Object.values(state.teams);
+  const shift = (t: Team) => t.prestige - (R.prestige![t.id] ?? t.prestige);
+  // prestige moves relative to the league: a program that rose faster than everyone else aims higher
+  const avgShift = teams.reduce((s, t) => s + shift(t), 0) / Math.max(1, teams.length);
+  for (const t of teams) {
+    if (t.id === uid) continue;
+    t.facilities = clamp(Math.round((t.facilities - AGING) * 100) / 100, 1, 10);
+    const target = clamp(R.base[t.id] + (shift(t) - avgShift) * 0.09, 1, 10);
+    const recent = t.history.slice(-3);
+    const games = recent.reduce((s, x) => s + x.w + x.l, 0);
+    const form = games ? recent.reduce((s, x) => s + x.w, 0) / games - 0.5 : 0;
+    const dancing = recent[recent.length - 1]?.ncaaSeed != null ? 0.03 : 0;
+    const p = clamp(0.115 + (target - t.facilities) * 0.12 + (t.market - 5) * 0.008 + form * 0.1 + dancing, 0.02, 0.5);
+    if (!rng.chance(p)) continue;
+    const key = rng.pick(FACILITY_KEYS);
+    t.facilities = clamp(Math.round((t.facilities + rng.range(0.4, 0.9)) * 10) / 10, 1, 10);
+    const level = clamp(Math.round(((t.facilities - 1) / 9) * 4) + 1, 1, MAX_LEVEL);
+    built.push({ season: state.season, teamId: t.id, key, cost: upgradeCost(key, level, t.prestige), rating: t.facilities });
+  }
+  // your buildings age too; your upgrades still count in full
+  const pb = state.build?.[uid];
+  if (pb) { pb.baseRating = clamp(Math.round((pb.baseRating - AGING) * 100) / 100, 1, 10); syncRating(state, pb); }
+  R.log = [...built.sort((a, b) => b.cost - a.cost), ...R.log].slice(0, 80);
+  if (!built.length) return;
+  const user = state.teams[uid];
+  const rivals = new Set(Object.values(state.rivals?.pairs ?? {}).filter((r) => r.active && (r.a === uid || r.b === uid)).map((r) => (r.a === uid ? r.b : r.a)));
+  const notable = built.filter((b) => state.teams[b.teamId].prestige >= 55 || state.teams[b.teamId].conf === user.conf || rivals.has(b.teamId)).slice(0, 5);
+  for (const b of [...notable].reverse()) {
+    const t = state.teams[b.teamId];
+    const close = t.conf === user.conf || rivals.has(t.id);
+    addNews(state, { kind: 'feature', headline: `${t.school} breaks ground on a ${fmt(b.cost)} ${PROJECT_NOUN[b.key]}`, body: `${FACILITIES[b.key].desc} ${close ? `It's a shot across the bow for ${user.school}.` : ''}`.trim(), teams: [t.id], important: close });
+  }
+  addNews(state, { kind: 'feature', headline: `Facilities arms race: ${built.length} programs broke ground this year`, body: `The biggest projects: ${built.slice(0, 5).map((b) => `${state.teams[b.teamId].school} (${fmt(b.cost)} ${PROJECT_NOUN[b.key]})`).join(', ')}.`, teams: built.slice(0, 5).map((b) => b.teamId) });
 }

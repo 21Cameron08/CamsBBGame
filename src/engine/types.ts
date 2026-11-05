@@ -621,6 +621,8 @@ export interface Settings {
   autoRecruit?: boolean;
   /** conference realignment (chosen with difficulty when the dynasty starts; older saves: off) */
   realignment?: RealignMode;
+  /** AI programs build (and everyone's facilities age); older saves: off */
+  facilityRace?: boolean;
   confirmAdvance: boolean;
 }
 
@@ -717,6 +719,8 @@ export interface GameState {
   staff?: StaffState;
   /** jerseys retired during the dynasty (created on first use) */
   legacy?: { retired: Record<string, RetiredJersey[]> };
+  /** the facilities arms race: every program's starting rating and prestige, and recent construction */
+  facRace?: { base: Record<string, number>; prestige?: Record<string, number>; log: FacRaceEntry[] };
   /** program building: facilities, boosters and the program fund, per school you've coached */
   build?: Record<string, ProgramBuild>;
   /** conference realignment moves, announced and completed */
@@ -1166,3 +1170,4 @@ export interface ProgramBuild {
   /** what opened at the start of a season (for the press) */
   opened?: { season: number; keys: FacilityKey[] };
 }
+export interface FacRaceEntry { season: number; teamId: string; key: FacilityKey; cost: number; rating: number }

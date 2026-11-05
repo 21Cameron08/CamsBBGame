@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useGame, useGameState } from '../../store/gameStore';
-import { PersonFace, Section, TeamHeroBg } from '../components/common';
+import { PersonFace, Section, TeamHeroBg, TeamLogo, TeamName } from '../components/common';
 import type { FacilityKey, GameState } from '../../engine/types';
 import {
   FACILITIES, FACILITY_KEYS, MAX_LEVEL, MAX_PROJECTS, buildSeasons, boosterStyle, callBooster, canBuild, facilityGrade, fmtFund,
-  moveToNil, programBuild, projectedDonations, startProject, underConstruction,
+  moveToNil, programBuild, projectedDonations, startProject, underConstruction, facilityRaceOn, PROJECT_NOUN,
 } from '../../engine/facilities';
 import { seasonLabel } from '../../engine/calendar';
+import { ordinal } from '../../engine/awards';
 import { sfx } from '../sound';
 
 const moodLabel = (m: number) => (m >= 85 ? ['Thrilled', 'good'] : m >= 65 ? ['Happy', 'good'] : m >= 45 ? ['Content', ''] : m >= 25 ? ['Restless', 'gold'] : ['Furious', 'bad']) as [string, string];
@@ -105,6 +106,77 @@ export function FacilitiesScreen() {
           </Section>
         </div>
       </div>
+
+      <ArmsRace g={g} />
+    </div>
+  );
+}
+
+/** where you stand: your conference by facilities rating, and who has been building */
+function ArmsRace({ g }: { g: GameState }) {
+  const open = useGame((s) => s.open);
+  const on = facilityRaceOn(g);
+  const uid = g.user.teamId;
+  const me = g.teams[uid];
+  const conf = g.conferences.find((c) => c.id === me.conf);
+  const base = g.facRace?.base ?? {};
+  const table = Object.values(g.teams).filter((t) => t.conf === me.conf).sort((a, b) => b.facilities - a.facilities || b.prestige - a.prestige);
+  const myRank = table.findIndex((t) => t.id === uid) + 1;
+  const national = Object.values(g.teams).filter((t) => t.facilities > me.facilities).length + 1;
+  const log = g.facRace?.log ?? [];
+  const lastSeason = log[0]?.season;
+  const recent = log.filter((e) => e.season === lastSeason);
+  const lastBuild = (id: string) => log.find((e) => e.teamId === id);
+  const watch = recent.filter((e) => g.teams[e.teamId]?.conf === me.conf || g.teams[e.teamId]?.prestige >= 55).slice(0, 10);
+  return (
+    <div className="grid g2" style={{ alignItems: 'start' }}>
+      <Section title={`Facilities Arms Race · ${conf?.short ?? 'Conference'}`} right={on ? <span className="tiny muted">You're {ordinal(myRank)} of {table.length} here, {ordinal(national)} nationally</span> : <span className="pill" title="Turn it on in Settings → Preferences">Off</span>}>
+        {!on && <div className="tiny muted" style={{ marginBottom: 8 }}>The arms race is off, so only you build and other programs keep the facilities they started with. Turn it on in Settings → Preferences.</div>}
+        <div className="col" style={{ gap: 2 }}>
+          {table.map((t, i) => {
+            const d = on && t.id in base ? Math.round((t.facilities - base[t.id]) * 10) / 10 : 0;
+            const lb = on ? lastBuild(t.id) : undefined;
+            const mine = t.id === uid;
+            return (
+              <div key={t.id} className={`row race-row ${mine ? 'mine' : ''}`}>
+                <span className="tiny muted num" style={{ width: 18, textAlign: 'right' }}>{i + 1}</span>
+                <TeamLogo team={t} size={22} />
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <TeamName team={t} showRank={false} className={mine ? 'b' : ''} />
+                  {lb && <div className="tiny muted ellipsis">{FACILITIES[lb.key].icon} {PROJECT_NOUN[lb.key]}, {seasonLabel(lb.season)}</div>}
+                </div>
+                <span className="heat-bar" style={{ width: 90, height: 6 }}><i style={{ width: `${t.facilities * 10}%`, background: mine ? 'var(--accent)' : 'linear-gradient(90deg,#6b7a99,#9fb0cc)', boxShadow: 'none' }} /></span>
+                <span className="num" style={{ width: 34, textAlign: 'right' }}>{t.facilities.toFixed(1)}</span>
+                {on && <span className={`tiny num ${d > 0 ? 'good' : d < 0 ? 'bad' : 'muted'}`} style={{ width: 36, textAlign: 'right' }} title="Change since the arms race began">{d > 0 ? '+' : d < 0 ? '−' : '±'}{Math.abs(d).toFixed(1)}</span>}
+              </div>
+            );
+          })}
+        </div>
+      </Section>
+      <Section title="Who's Building" right={lastSeason != null ? <span className="tiny muted">{recent.length} projects in {seasonLabel(lastSeason)}</span> : undefined}>
+        {!on ? <div className="tiny muted">Nobody else breaks ground while the arms race is off.</div>
+          : !watch.length ? <div className="tiny muted">No AI projects yet. Programs decide what to build at the end of each season: the rich, the winners and anyone falling behind their prestige build most.</div>
+          : (
+            <div className="col" style={{ gap: 6 }}>
+              <div className="tiny muted">Every program's facilities age a little each year. AI projects only move the facilities rating recruits and transfers see.</div>
+              {watch.map((e, i) => {
+                const t = g.teams[e.teamId];
+                const close = t.conf === me.conf;
+                return (
+                  <div key={i} className="row booster-row" style={{ padding: '6px 10px', cursor: 'pointer', borderColor: close ? 'rgba(246,201,76,.35)' : undefined }} onClick={() => open({ kind: 'team', id: t.id })}>
+                    <span style={{ fontSize: 20 }}>{FACILITIES[e.key].icon}</span>
+                    <TeamLogo team={t} size={24} />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div className="small b ellipsis">{t.school}{close && <span className="pill gold" style={{ fontSize: 9, marginLeft: 6 }} title="In your conference">{conf?.short ?? 'Your conference'}</span>}</div>
+                      <div className="tiny muted ellipsis">New {PROJECT_NOUN[e.key]} · facilities now {e.rating.toFixed(1)}</div>
+                    </div>
+                    <span className="num small">{fmtFund(e.cost)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+      </Section>
     </div>
   );
 }
