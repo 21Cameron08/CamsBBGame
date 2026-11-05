@@ -1,5 +1,5 @@
 // server/entry.ts
-import { BlobPreconditionFailedError, get, put } from "@vercel/blob";
+import { BlobPreconditionFailedError, get, head as head2, put } from "@vercel/blob";
 
 // server/league.ts
 import { gzipSync, gunzipSync } from "node:zlib";
@@ -13132,9 +13132,11 @@ function leagueHandlers(store2) {
 // server/entry.ts
 var store = {
   async get(path) {
+    const h2 = await head2(path).catch(() => null);
+    if (!h2) return null;
     const r = await get(path, { access: "private", useCache: false }).catch(() => null);
     if (!r || r.statusCode !== 200 || !r.stream) return null;
-    return { body: new Uint8Array(await new Response(r.stream).arrayBuffer()), etag: r.blob.etag };
+    return { body: new Uint8Array(await new Response(r.stream).arrayBuffer()), etag: h2.etag };
   },
   async put(path, body, ifMatch) {
     try {
@@ -13147,8 +13149,16 @@ var store = {
       });
       return true;
     } catch (e) {
-      if (e instanceof BlobPreconditionFailedError) return false;
-      throw e;
+      if (!(e instanceof BlobPreconditionFailedError) || !ifMatch) throw e;
+      const now = await head2(path).catch(() => null);
+      if (now && now.etag !== ifMatch) return false;
+      await put(path, typeof body === "string" ? body : Buffer.from(body), {
+        access: "private",
+        allowOverwrite: true,
+        addRandomSuffix: false,
+        contentType: typeof body === "string" ? "application/json" : "application/octet-stream"
+      });
+      return true;
     }
   }
 };
