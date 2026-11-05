@@ -17,6 +17,7 @@ import { loreOf, ringOfHonor, retiredJerseys } from './legacy';
 import { rivalryOf } from './rivalry';
 import { newcomer, pendingMoves } from './realignment';
 import { FACILITIES } from './facilities';
+import { captainsOf, chemLabel, lockerGroup } from './chemistry';
 
 type Tone = PressQuestion['answers'][number]['tone'];
 type Answer = PressQuestion['answers'][number];
@@ -848,6 +849,26 @@ export function mediaDayPresser(state: GameState): PressConference {
     });
   }
 
+  // the locker room: lots of new faces, or almost everybody back
+  {
+    const ps = teamPlayers(state, team.id);
+    const tr = ps.filter((p) => lockerGroup(p, team.id) === 'transfer').length;
+    const fresh = ps.filter((p) => lockerGroup(p, team.id) === 'freshman').length;
+    const back = ps.length - tr - fresh;
+    if (tr + fresh >= 6) {
+      cands.push({ key: 'md.newFaces', topic: 'chemistry', w: 8, build: () => makeQ(team, { role: 'beat', tag: 'Locker room' }, `You have ${tr + fresh} new faces${tr ? `, ${tr} of them transfers` : ''}. How do you build chemistry that fast?`, [
+        A('confident', `Winning builds chemistry. We'll have plenty of both.`, [{ kind: 'hype', delta: 3 }, { kind: 'chem', delta: 1 }]),
+        A('humble', `It takes time. The older guys have to bring the new ones along, and they've been great.`, [{ kind: 'chem', delta: 2 }, { kind: 'mediaRep', delta: 1 }]),
+        A('joke', `Mandatory karaoke. Nobody's a stranger after you've heard them sing.`, [{ kind: 'chem', delta: 1 }, { kind: 'mediaRep', delta: 2 }]),
+      ]) });
+    } else if (back >= 9) {
+      cands.push({ key: 'md.continuity', topic: 'chemistry', w: 6, build: () => makeQ(team, { role: 'beat', tag: 'Locker room' }, `${back} players are back from last year's team. How much does that continuity matter?`, [
+        A('confident', `It's our biggest edge. These guys know each other's games cold.`, [{ kind: 'chem', delta: 1 }, { kind: 'hype', delta: 2 }]),
+        A('humble', `It helps, but nothing carries over automatically. We still have to build it again.`, [{ kind: 'chem', delta: 2 }, { kind: 'mediaRep', delta: 1 }]),
+      ]) });
+    }
+  }
+
   return { id: rng.id('pc'), title: 'Preseason Media Day', context: `Media day at ${team.arena}. A wall of cameras awaits.`, when: 'at Media Day', questions: choose(state, cands, 5) };
 }
 
@@ -1342,6 +1363,25 @@ export function postgamePresser(state: GameState, g: ScheduledGame, box: BoxScor
     ]) });
   }
   if (state.day > 3 && won && !tourney) { const f = funQuestion(state, team, 'pg'); f.w = 1.5; cands.push(f); }
+  // the locker room
+  {
+    const chem = team.chem ?? 60;
+    const caps = captainsOf(state, team);
+    if (!won && chem < 42) {
+      cands.push({ key: 'pg.fractured', topic: 'chemistry', w: 7, build: () => makeQ(team, { role: 'columnist', tag: 'Locker room' }, v(`There's talk that your locker room is ${chemLabel(chem).label.toLowerCase()}. Is that true?`, `From the outside it looks like this team isn't playing for each other. Is something going on in that locker room?`, `Are your players still listening to you?`), [
+        A('humble', `We have work to do, on the floor and off it. That starts with me.`, [{ kind: 'chem', delta: 2 }, { kind: 'mediaRep', delta: 2 }]),
+        A('deflect', `Our locker room is fine. Next question.`, [{ kind: 'mediaRep', delta: -2 }]),
+        A('fiery', `Anybody who isn't all in can find the door. I mean that.`, [{ kind: 'chem', delta: -2 }, { kind: 'morale', target: 'team', delta: -2 }, { kind: 'hype', delta: 2 }]),
+        ...(caps.length ? [A('praise', `${caps.map((p) => p.last).join(' and ')} have been great. Our leaders will get us through this.`, [{ kind: 'chem', delta: 2 }, ...caps.map((p) => ({ kind: 'morale' as const, target: p.id, delta: 4 }))])] : []),
+      ]) });
+    } else if (won && chem >= 75 && !tourney) {
+      cands.push({ key: 'pg.brotherhood', topic: 'chemistry', w: 2.5, build: () => makeQ(team, { role: 'beat', tag: 'Locker room' }, v(`This team looks like it genuinely likes each other. Where does that come from?`, `Your bench was going crazy all night. What's the vibe in that locker room?`), [
+        A('praise', caps.length ? `Start with ${caps.map((p) => p.last).join(' and ')}. Our captains set the tone every day.` : `The older guys. They set the tone every day.`, [{ kind: 'chem', delta: 1 }, ...caps.map((p) => ({ kind: 'morale' as const, target: p.id, delta: 3 }))]),
+        A('joke', `They're all scared of our trainer. Nothing brings people together like a common enemy.`, [{ kind: 'mediaRep', delta: 2 }, { kind: 'chem', delta: 1 }]),
+        A('humble', `It's the best group I've coached. I'm lucky.`, [{ kind: 'morale', target: 'team', delta: 2 }, { kind: 'mediaRep', delta: 1 }]),
+      ]) });
+    }
+  }
 
   const n = big || cands.some((x) => x.topic === 'followup') ? 4 : 3;
   const title = won ? (upsetWin ? 'Postgame: Statement Win' : rv ? 'Postgame: Rivalry Win' : ncaa ? 'Postgame: Survive and Advance' : 'Postgame Press Conference') : badLoss ? 'Postgame: Damage Control' : ncaa ? 'Postgame: Season Over' : 'Postgame Press Conference';

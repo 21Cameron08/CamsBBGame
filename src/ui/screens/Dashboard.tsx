@@ -13,6 +13,7 @@ import type { GameState, ScheduledGame } from '../../engine/types';
 import { teamAccent } from '../color';
 import { PRACTICE_INFO, PRACTICE_ORDER, goalStatus } from '../../engine/development';
 import { RivalryStrip } from './Rivalries';
+import { LockerCard } from './LockerRoom';
 
 const IN_SEASON_PHASES = ['preseason', 'regular', 'confTourney', 'selection', 'ncaa'];
 
@@ -146,6 +147,8 @@ export function Dashboard() {
               </div>
             </motion.div>
           )}
+
+          <LockerCard g={g} />
 
           {g.staff && (
             <Section title="Coaching Staff" right={<button className="btn sm ghost" onClick={() => nav('staff')}>Staff →</button>}>

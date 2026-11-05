@@ -23,7 +23,7 @@ import { facilityCrowd, ensureBuild } from '../engine/facilities';
 
 export type Screen =
   | 'home' | 'roster' | 'staff' | 'schedule' | 'recruiting' | 'portal' | 'nil' | 'rankings' | 'standings' | 'bracket'
-  | 'media' | 'stats' | 'coach' | 'inbox' | 'offseason' | 'settings' | 'history' | 'development' | 'records' | 'radio' | 'programs' | 'rivalries' | 'facilities';
+  | 'media' | 'stats' | 'coach' | 'inbox' | 'offseason' | 'settings' | 'history' | 'development' | 'records' | 'radio' | 'programs' | 'rivalries' | 'facilities' | 'locker';
 
 export type Modal =
   | { kind: 'player'; id: string }

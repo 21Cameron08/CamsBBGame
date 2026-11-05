@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGame } from '../../store/gameStore';
 import { PlayerFace, TeamLogo, Stars, Confetti, CoachFace } from '../components/common';
-import type { GameState, Moment, Team } from '../../engine/types';
+import type { GameState, Moment, Player, Team } from '../../engine/types';
 import { mix } from '../color';
 import { sfx } from '../sound';
 import { decisionSummary } from '../../engine/recruiting';
@@ -51,6 +51,12 @@ function MomentView({ g, m }: { g: GameState; m: Moment }) {
     case 'facility': {
       const t = g.teams[m.teamId];
       return <FacilityMoment team={t} icon={FACILITY_INFO[m.key].icon} name={m.name} level={m.level} desc={FACILITY_INFO[m.key].per} onDone={dismiss} onGo={() => { dismiss(); nav('facilities'); }} />;
+    }
+    case 'seniorNight': {
+      const t = g.teams[m.teamId];
+      const ps = m.players.map((id) => g.players[id]).filter(Boolean);
+      if (!t || !ps.length) { dismiss(); return null; }
+      return <SeniorNightMoment g={g} team={t} players={ps} onDone={dismiss} onGo={() => { dismiss(); nav('locker'); }} />;
     }
     case 'conference': {
       const t = g.teams[m.teamId];
@@ -312,6 +318,45 @@ function ConferenceMoment({ team, from, to, toShort, toColor, onDone }: { team: 
         <div className="muted" style={{ marginTop: 10 }}>{team.school} starts a new chapter this season: new opponents, new road trips, new rivals.</div>
         <button className="btn gold lg" style={{ marginTop: 22 }} onClick={onDone}>Let's go</button>
       </motion.div>
+    </Shell>
+  );
+}
+
+function SeniorNightMoment({ g, team, players, onDone, onGo }: { g: GameState; team: Team; players: Player[]; onDone: () => void; onGo: () => void }) {
+  useEffect(() => { sfx.crowd(1); }, []);
+  const line = (p: Player) => {
+    const seasons = p.career.filter((c) => c.teamId === team.id);
+    const gp = seasons.reduce((s, c) => s + c.gp, 0) + p.stats.gp;
+    const pts = seasons.reduce((s, c) => s + c.pts, 0) + p.stats.pts;
+    return { years: seasons.length + 1, gp, pts, known: seasons.length > 0 };
+  };
+  return (
+    <Shell colors={team.colors} onClose={onDone}>
+      <div style={{ textAlign: 'center', maxWidth: 900, padding: '0 16px' }}>
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="eyebrow" style={{ color: '#ffd27a' }}>{team.arena} · Senior Night</motion.div>
+        <motion.div initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 160, damping: 15, delay: 0.1 }}
+          className="num" style={{ fontSize: 'clamp(36px, 6vw, 70px)', lineHeight: 1.02, marginTop: 6, textShadow: `0 0 36px ${team.colors[0]}` }}>THANK YOU, SENIORS</motion.div>
+        <div className="muted" style={{ marginTop: 6 }}>Their last game at home. The crowd is on its feet before tipoff.</div>
+        <div className="row" style={{ justifyContent: 'center', gap: 14, marginTop: 24, flexWrap: 'wrap' }}>
+          {players.map((p, i) => {
+            const l = line(p);
+            return (
+              <motion.div key={p.id} className="card" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 + i * 0.35 }}
+                style={{ width: 160, padding: 14, position: 'relative', background: `linear-gradient(160deg, ${team.colors[0]}44, rgba(10,14,24,.9))` }}>
+                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.75 + i * 0.35, type: 'spring' }} style={{ position: 'absolute', top: 8, right: 10, fontSize: 20 }}>🌹</motion.div>
+                <PlayerFace p={p} size={72} team={team} />
+                <div className="b ellipsis" style={{ marginTop: 6 }}>{p.first} {p.last}</div>
+                <div className="tiny muted">#{p.num} · {p.pos} · {l.known ? `${l.years} seasons here` : p.cls}</div>
+                <div className="tiny" style={{ marginTop: 4 }}>{l.gp} games · {l.pts.toLocaleString()} points{l.known ? '' : ' this year'}</div>
+              </motion.div>
+            );
+          })}
+        </div>
+        <motion.div className="row" style={{ justifyContent: 'center', gap: 10, marginTop: 24 }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 + players.length * 0.35 }}>
+          <button className="btn" onClick={onGo}>🧩 Locker Room</button>
+          <button className="btn gold lg" onClick={onDone}>Hug it out 🤗</button>
+        </motion.div>
+      </div>
     </Shell>
   );
 }

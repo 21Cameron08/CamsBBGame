@@ -7,6 +7,7 @@ import { staffEffects } from './staff';
 import { practiceMods } from './development';
 import { chooseSchemes, playbookState } from './schemes';
 import { retiredNumbers } from './legacy';
+import { chemEdge } from './chemistry';
 
 export const ROSTER_MAX = 15;
 export const ROSTER_MIN = 12;
@@ -84,6 +85,7 @@ export function simSetup(state: GameState, team: Team): SimTeamSetup {
     strategy: team.strategy,
     coachTactics: coach ? coach.skills.tactics : 5,
     coachMotivation: coach ? coach.skills.motivation : 5,
+    chem: chemEdge(team.chem),
   };
   if (team.id !== state.user.teamId) return base;
   const pb = playbookState(state);

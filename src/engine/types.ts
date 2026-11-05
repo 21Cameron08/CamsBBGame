@@ -151,6 +151,8 @@ export interface TeamSeasonHistory {
   apFinal: number | null;
   coachId: string;
   rating: number;
+  /** team chemistry at season's end */
+  chem?: number;
 }
 
 export interface Team {
@@ -188,6 +190,8 @@ export interface Team {
   history: TeamSeasonHistory[];
   /** dynamic offseason flags */
   coachChange?: boolean;
+  /** team chemistry 0-100 (computed weekly; older saves fill in on the first week) */
+  chem?: number;
 }
 
 export type CoachArchetype = 'Recruiter' | 'Tactician' | 'Players Coach' | 'Developer' | 'Showman' | 'Portal King';
@@ -386,6 +390,8 @@ export interface InboxChoice {
   goto?: string;
   /** conference invitation decision */
   realign?: { moveId: string; accept: boolean };
+  /** locker-room decision */
+  locker?: LockerAction;
   /** booster request decision */
   booster?: { id: string; action: 'naming' | 'pet' | 'seats' | 'walkon' | 'demand'; accept: boolean; amount?: number; key?: FacilityKey };
   /** short preview of effects shown in UI */
@@ -407,7 +413,9 @@ export type Effect =
   | { kind: 'rating'; target: string; key: RatingKey; delta: number }
   | { kind: 'recruitInterest'; delta: number }
   | { kind: 'hours'; delta: number }
-  | { kind: 'staff'; staffId: string; salaryPct?: number; loyalty?: number; ambition?: number };
+  | { kind: 'staff'; staffId: string; salaryPct?: number; loyalty?: number; ambition?: number }
+  | { kind: 'chem'; delta: number }
+  | { kind: 'suspend'; target: string; games: number; reason: string };
 
 export interface InboxItem {
   id: string;
@@ -678,7 +686,8 @@ export type Moment =
   | { kind: 'rivalry'; key: string; teamId: string; oppId: string; label: string; sub: string; trophy?: string }
   | { kind: 'awards'; season: number; press?: PressConference | null }
   | { kind: 'conference'; teamId: string; from: string; to: string }
-  | { kind: 'facility'; teamId: string; key: FacilityKey; level: number; name: string };
+  | { kind: 'facility'; teamId: string; key: FacilityKey; level: number; name: string }
+  | { kind: 'seniorNight'; teamId: string; players: string[]; oppId: string };
 
 export interface GameState {
   version: number;
@@ -719,6 +728,8 @@ export interface GameState {
   staff?: StaffState;
   /** jerseys retired during the dynasty (created on first use) */
   legacy?: { retired: Record<string, RetiredJersey[]> };
+  /** your locker room: chemistry, captains and what's happened (created on first use) */
+  locker?: LockerState;
   /** the league's prestige scale, best first: every program's prestige when the dynasty began
    *  (older saves: rebuilt from the school data on first use). Season results are ranked onto it. */
   prestigeScale?: number[];
@@ -1174,3 +1185,38 @@ export interface ProgramBuild {
   opened?: { season: number; keys: FacilityKey[] };
 }
 export interface FacRaceEntry { season: number; teamId: string; key: FacilityKey; cost: number; rating: number }
+
+// ---------------- locker room & chemistry ----------------
+export type LockerGroup = 'returner' | 'transfer' | 'freshman';
+export interface LockerEntry { season: number; day: number; icon: string; text: string; delta?: number; playerId?: string }
+export interface LockerState {
+  teamId: string;
+  season: number;
+  /** weekly chemistry readings this season */
+  trend: number[];
+  captains: string[];
+  /** who picked this season's captains */
+  captainsBy?: 'you' | 'staff';
+  /** lasting effect of locker-room decisions and events; fades a little each week */
+  boost: number;
+  log: LockerEntry[];
+  /** players told they're free to look elsewhere (they'll enter the portal) */
+  doorOpen: string[];
+  /** bigger-role promises: when made, and his minutes at the time */
+  promised: Record<string, { day: number; min: number; gp: number }>;
+  /** week of the last locker-room dilemma, and of the last players-only meeting */
+  lastEventWeek?: number;
+  lastMeetingWeek?: number;
+  /** dilemma cooldowns: story key -> week it can come back */
+  cool?: Record<string, number>;
+  /** season the captains question went to your inbox */
+  askedCaptains?: number;
+  seniorNight?: number;
+  pastCaptains: { season: number; teamId: string; names: string[] }[];
+}
+export type LockerAction =
+  | { kind: 'captains'; ids: string[] }
+  | { kind: 'promise'; playerId: string }
+  | { kind: 'door'; playerId: string }
+  | { kind: 'strip'; playerId: string }
+  | { kind: 'start'; playerId: string; benchId: string };

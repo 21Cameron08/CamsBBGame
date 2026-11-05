@@ -173,6 +173,31 @@ Production build: `npm run build`, then `npm run preview` (or host the `dist/` f
   - the Facilities page ranks your conference by facilities rating, with each school's change since the race began, and lists who broke ground last offseason
   - offseason headlines for big projects, flagged when a conference foe or rival builds
 
+### 🧩 Locker room & chemistry
+- **Team chemistry (0–100)** for every program, from Toxic to Brotherhood. It moves a little each week toward a target built from:
+  - your captains (good captains help; a diva or hothead wearing the C hurts)
+  - leaders and glue guys on the roster, and divas and hotheads
+  - team mood, and players unhappy with their role or minutes
+  - continuity (how much of the rotation is back) and how many transfers are still learning each other
+  - recent results, the head coach's motivation skill, and what you've done in the locker room
+- **What it does:** a small edge in every rating, a bigger one late in close games, steadier morale, and fewer (or more) players heading for the portal. AI teams have chemistry too, so it isn't a free bonus.
+- **Name your captains** each preseason (or let your staff pick). Every player gets a captain grade, from Natural Leader to Wrong Guy. Passing over seniors for a freshman stings, and stripping a captain mid-season crushes him.
+- **Locker-room dilemmas** in your Office:
+  - a player who wants a bigger role (promise him minutes and the staff checks whether you kept your word)
+  - a freshman outplaying a senior starter
+  - curfew, class and social-media trouble, and a diva's cryptic tweets
+  - two locker rooms (transfers vs. returners)
+  - a captain who has checked out
+  - a star's NBA buzz, a viral bench celebration, a prank war and requests from the players
+  - players-only meetings after losing streaks, which go well or badly depending on your captains
+- moments that need no decision, like a captain calling out the team or a player organizing a team bowling night
+- **Senior Night** after your last home game, with a celebration for your seniors
+- **The Locker Room page:**
+  - a chemistry gauge, the season trend and what's driving it
+  - every player's group (returner, transfer, newcomer), role, minutes against what he expected, and mood
+  - the captain picker, the groups in the room, a season log and past captains
+- chemistry shows up on the dashboard, the pregame screen, at press conferences ("Is your locker room fractured?") and on Full Court Fanatics
+
 ### 🏋️ Player development
 - **A development plan for every player.** Pick one of seven focuses:
   - Balanced
@@ -390,6 +415,7 @@ src/
     awards.ts      season awards, Awards Night show data, Hall of Fame inductions
     realignment.ts conference realignment: waves of moves, invitations, backfill, applying moves
     facilities.ts  program building: the program fund, facilities, boosters and their requests
+    chemistry.ts   locker room: team chemistry, captains, dilemmas, promises, Senior Night
     events.ts / media.ts   story events, news & social
     staff.ts       coaching staff: market, effects, contracts, poaching, coaching tree
     scheduling.ts  Scheduling Office: Feast Week events, booking rules, guarantees, series, résumé meter

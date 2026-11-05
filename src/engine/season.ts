@@ -23,6 +23,7 @@ import { radioWeekly } from './radio';
 import { rivalryOf, rivalCrowd, rivalryResult, rivalryWeek, rivalryRecruit } from './rivalry';
 import { answerInvitation } from './realignment';
 import { facilityCrowd, boosterWeek, resolveBooster } from './facilities';
+import { chemistryWeek, logDecision, resolveLocker, roleOf, seniorNight } from './chemistry';
 
 export function isUserGame(state: GameState, g: ScheduledGame) {
   return g.home === state.user.teamId || g.away === state.user.teamId;
@@ -113,7 +114,7 @@ export function applyGameResult(state: GameState, g: ScheduledGame, box: BoxScor
       }
       // playing-time morale
       const rank = sorted.findIndex((x) => x.id === p.id);
-      const expMin = p.promise === 'star' ? 30 : p.promise === 'starter' ? 24 : rank < 5 ? 24 : rank < 8 ? 12 : rank < 10 ? 5 : 0;
+      const expMin = roleOf(p, rank).min;
       let dm = won ? 0.8 : -0.8;
       if (bp.min + 6 < expMin) dm -= (p.traits.includes('diva') ? 2.2 : 1.1) * (p.promise ? 1.8 : 1);
       else if (bp.min > expMin + 4) dm += 0.6;
@@ -162,6 +163,7 @@ export function applyGameResult(state: GameState, g: ScheduledGame, box: BoxScor
       state.user.press = postgamePresser(state, g, box);
     }
     state.user.moments.push({ kind: 'win', gameId: g.id, big: won && (!!oppRank || g.type === 'ncaa' || g.type === 'ctourn') });
+    seniorNight(state, g);
     void opp;
   } else {
     upsetNews(state, g);
@@ -271,7 +273,10 @@ export function weeklyTick(state: GameState, week: number) {
     p.morale = clamp(p.morale + (65 - p.morale) * 0.04, 0, 100);
     if (p.teamId === state.user.teamId && !p.nil && p.ovr >= 55) p.morale = clamp(p.morale - 2, 0, 100);
     if (p.stats.gp) p.followers = Math.round(p.followers * (1 + Math.min(0.04, (p.stats.pts / p.stats.gp) * 0.0012)));
-  }  // a booster may come calling
+  }
+  // the locker room: chemistry for every team, and your captains, promises and dilemmas
+  chemistryWeek(state, week);
+  // a booster may come calling
   boosterWeek(state);
   // rivalry week headlines, then the weekly fan radio show
   if (state.phase === 'regular' || state.phase === 'confTourney') rivalryWeek(state);
@@ -320,6 +325,8 @@ export function resolveInbox(state: GameState, id: string, choiceIdx: number): s
   if (ch.staffRenew != null) applyStaffRenewChoice(state, ch.staffRenew);
   if (ch.realign) answerInvitation(state, ch.realign.moveId, ch.realign.accept);
   if (ch.booster) resolveBooster(state, ch.booster);
+  if (ch.locker) resolveLocker(state, ch.locker);
+  if (item.fromRole === 'Locker Room' && ch.locker?.kind !== 'captains' && !ch.goto) logDecision(state, item, ch);
   if (ch.redshirt) {
     const p = state.players[ch.redshirt];
     if (p) p.redshirting = true;

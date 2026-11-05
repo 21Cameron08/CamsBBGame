@@ -28,6 +28,7 @@ import { rivalrySeasonEnd, rivalryCoachMove } from './rivalry';
 import { planRealignment, applyRealignment } from './realignment';
 import { seasonDonations, openFacilities, programBuild, aiFacilities } from './facilities';
 import { TEAMS } from '../data/teams';
+import { chemistryNewSeason, chemistrySeasonEnd } from './chemistry';
 
 const NCAA_BONUS: Record<string, number> = { Champion: 30, 'Runner-up': 22, 'Final Four': 18, 'Elite Eight': 12, 'Sweet 16': 8, 'Round of 32': 4, 'Round of 64': 1, 'First Four': 0.5 };
 
@@ -112,6 +113,7 @@ export function beginSeasonEnd(state: GameState) {
     p.career.push({ ...p.stats, season: state.season, teamId: p.teamId, cls: p.cls, ovr: p.ovr });
   }
   recordSeasonEnd(state);
+  chemistrySeasonEnd(state);
 
   // user evaluation
   const uh = user.history[user.history.length - 1];
@@ -506,6 +508,7 @@ export function newSeason(state: GameState) {
   seasonInstallReset(state);
   state.user.hoursMax = hoursForWeek(state);
   state.user.hours = state.user.hoursMax;
+  chemistryNewSeason(state);
   state.user.press = mediaDayPresser(state);
   const user = state.teams[state.user.teamId];
   const unsigned = teamPlayers(state, user.id).filter((p) => !p.nil);

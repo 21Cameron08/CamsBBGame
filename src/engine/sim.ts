@@ -19,6 +19,8 @@ export interface SimTeamSetup {
   pressure?: number;
   /** staff: energy drain multiplier */
   staminaMul?: number;
+  /** team chemistry, -1..1: a small edge in every rating and in the clutch */
+  chem?: number;
   /** scheme familiarity (user's team; AI programs know their schemes) */
   fam?: { off: Partial<Record<OffStyle, number>>; def: Partial<Record<DefStyle, number>> };
 }
@@ -238,7 +240,7 @@ export class GameSim {
     const mins = MINUTES_BY_ROT[rot];
     const motivation = s.coachMotivation;
     return chart.map((p, idx) => {
-      const moraleMod = (p.morale - 65) * 0.06 + motivation * 0.15;
+      const moraleMod = (p.morale - 65) * 0.06 + motivation * 0.15 + (s.chem ?? 0) * 0.9;
       const r = { ...p.ratings };
       for (const k of Object.keys(r) as (keyof Ratings)[]) r[k] = r[k] + moraleMod;
       let usage = Math.exp((offSkill(r) - 60) * 0.042);
@@ -486,6 +488,7 @@ export class GameSim {
     if (transition) p += 0.02;
     if (!this.neutral) p += o === 0 ? -0.006 : 0.006;
     p -= this.setups[o].coachTactics * 0.0015;
+    p -= (this.setups[o].chem ?? 0) * 0.006;
     p += this.setups[d].pressure ?? 0;
     p = clamp(p, 0.07, 0.32);
     if (!rng.chance(p)) return false;
@@ -622,6 +625,7 @@ export class GameSim {
     if (this.runPts[o] >= 7) p += 0.012; // momentum
     const clutchTime = this.finalPeriod() && remaining < 150 && Math.abs(lead) <= 6;
     if (clutchTime) {
+      p += (this.setups[o].chem ?? 0) * 0.02;
       if (shooter.p.traits.includes('clutch')) p += 0.05;
       else p -= (70 - Math.min(70, r.iq)) * 0.001;
     }
@@ -753,7 +757,7 @@ export class GameSim {
     let p = clamp(x.r.ft / 100 * 0.95 + 0.035, 0.3, 0.95);
     const remaining = this.periodEnd - this.t;
     if (this.finalPeriod() && remaining < 60 && Math.abs(this.score[0] - this.score[1]) <= 5) {
-      p += x.p.traits.includes('clutch') ? 0.04 : -0.03;
+      p += (x.p.traits.includes('clutch') ? 0.04 : -0.03) + (this.setups[o].chem ?? 0) * 0.015;
       if (!this.neutral && o === 1) p -= 0.015; // road crowd
     }
     let lastMade = false;

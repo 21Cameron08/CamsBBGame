@@ -136,6 +136,17 @@ export function applyEffects(state: GameState, effects: Effect[], ctxPlayer?: st
         break;
       }
       case 'hours': state.user.hours = Math.max(0, state.user.hours + e.delta); break;
+      case 'chem': {
+        // locker-room moments: a lasting push on chemistry, partly felt right away
+        if (state.locker?.teamId === team.id) state.locker.boost = clamp(state.locker.boost + e.delta, -15, 15);
+        team.chem = Math.round(clamp((team.chem ?? 60) + e.delta * 0.6, 0, 100) * 10) / 10;
+        break;
+      }
+      case 'suspend': {
+        const p = state.players[e.target === 'ctx' ? ctxPlayer ?? '' : e.target];
+        if (p && e.games > 0) p.injury = { type: `Suspended (${e.reason})`, games: Math.max(e.games, p.injury?.games ?? 0) };
+        break;
+      }
       case 'staff': {
         const m = state.staff?.members.find((x) => x.id === e.staffId);
         if (!m) break;

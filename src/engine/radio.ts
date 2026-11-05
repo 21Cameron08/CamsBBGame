@@ -15,6 +15,7 @@ import { seasonLabel } from './calendar';
 import { normCdf } from './sim';
 import { rivalryOf as activeRivalry, rivalriesOf, userRivalryThisWeek, heatInfo, seriesFor } from './rivalry';
 import { pendingMoves } from './realignment';
+import { chemLabel } from './chemistry';
 
 export const SHOW = { name: 'Full Court Fanatics', station: '98.7 The Hoop', slot: 'Monday nights', tagline: 'Two guys. Zero chill. All takes.' };
 export const HOSTS: Record<RadioHost, { name: string; nick: string; short: string; seed: string; colors: [string, string]; bio: string }> = {
@@ -379,6 +380,32 @@ function yoursSeg(c: Ctx): RadioSegment {
     const badLoss = games.find((x) => x.l.id === U.id && !x.w.apRank && x.w.net > 100);
     if (bigWin) lines.push(S(`Beating No. ${bigWin.l.apRank} ${bigWin.l.school}! That's a résumé win, baby. Frame it.`));
     else if (badLoss) lines.push(S(`Losing to ${badLoss.w.school}? ${badLoss.w.school}?! I had to pull the car over.`, 'hot'));
+  }
+  // the locker room: what leaked out this week, or a read on the vibe
+  {
+    const L = state.locker?.teamId === U.id ? state.locker : undefined;
+    const from = state.radio?.lastDay ?? state.day - 7;
+    const news = (L?.log ?? []).filter((e) => e.season === state.season && e.day > from && e.day <= state.day);
+    const big = news.find((e) => ['💔', '📣', '🌹', '✅'].includes(e.icon)) ?? news.find((e) => e.icon === '🗝️' && /suspend|bench/i.test(e.text));
+    const chem = U.chem ?? 60;
+    if (big?.icon === '💔') {
+      lines.push(S(`I'm hearing things out of that ${U.school} locker room, Dex. ${big.text}. That's not nothing.`, 'hot'));
+      lines.push(D(`Locker rooms remember that stuff. We'll see if it shows up on the floor.`));
+    } else if (big?.icon === '📣') {
+      lines.push(D(`Word is ${big.text.replace(' called out the team after practice', '')} got in some faces at practice this week.`, 'info'));
+      lines.push(S(`Good! I want my captains yelling. Yell more!`));
+    } else if (big?.icon === '🌹') {
+      lines.push(S(`Senior Night at ${U.arena}! I cried, Dex. I'm not ashamed.`));
+    } else if (big?.icon === '✅') {
+      lines.push(D(`Credit Coach ${coach.last}: ${big.text.replace('You kept your word: ', '')}. He said he'd get him minutes and he did.`, 'good'));
+    } else if (big) {
+      lines.push(D(`Discipline note out of ${U.school}: ${big.text.split(':')[0]}. Coach ${coach.last} isn't playing around.`, 'info'));
+    } else if (chem < 40 && U.record.w + U.record.l >= 4) {
+      lines.push(S(`I'm hearing that ${U.school} locker room is ${chemLabel(chem).label.toLowerCase()}, Dex. Guys aren't talking to each other.`, 'hot'));
+      lines.push(D(`You can see it on the floor. Nobody's helping anybody up.`));
+    } else if (chem >= 80 && U.record.w > U.record.l && r.chance(0.5)) {
+      lines.push(D(`Have you watched ${U.school}'s bench? Those guys love each other. That matters in March.`, 'good'));
+    }
   }
   // the numbers
   if (star && star.stats.gp >= 2) {

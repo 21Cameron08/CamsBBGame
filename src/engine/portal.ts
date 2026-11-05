@@ -12,6 +12,7 @@ import { staffEffects } from './staff';
 import { milesBetween, PLACES } from '../data/places';
 import { seasonLabel } from './calendar';
 import { rivalryTransfer } from './rivalry';
+import { doorOpen, portalLockerMul } from './chemistry';
 
 export const PORTAL_DAYS = 6;
 export const PORTAL_ACTIONS = {
@@ -184,7 +185,9 @@ export function openPortal(state: GameState) {
     if (p.traits.includes('hometown')) pr *= 0.8;
     const coach = state.coaches[team.coachId];
     if (coach) pr *= 1 - coach.skills.portal * 0.03 - coach.skills.motivation * 0.02;
+    pr *= portalLockerMul(state, p, team);
     pr = clamp(pr, 0, 0.85);
+    if (doorOpen(state, p.id)) pr = 0.95; // you told him he was free to go
     const reason = reasonFor(state, p, team);
     if (isUser(state, team.id)) {
       if (pr >= 0.2) {

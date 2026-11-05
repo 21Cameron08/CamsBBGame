@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGame, useGameState } from '../../store/gameStore';
 import { ModalFrame, PlayerFace, CoachFace, TeamLogo, TeamName, Ovr, Stars, RatingRow, Tabs, Bar, TeamHeroBg, fmtMoneyShort, Section, StaffFace } from '../components/common';
-import type { BoxPlayer, BoxScore, GameState, Player, Recruit, RatingKey } from '../../engine/types';
+import type { BoxPlayer, BoxScore, GameState, Player, Recruit, RatingKey, Team } from '../../engine/types';
 import { RATING_LABELS } from '../../engine/types';
 import { fmtHeight, TRAIT_INFO } from '../../engine/player';
 import { playerPerGame, isRivalry } from '../../engine/season';
@@ -26,6 +26,7 @@ import { ProgramDetail, CoachDetail } from '../screens/Programs';
 import { RivalryDetail, RivalryCard, RivalryStrip } from '../screens/Rivalries';
 import { rivalriesOf } from '../../engine/rivalry';
 import { loreOf, programPitch } from '../../engine/legacy';
+import { chemLabel } from '../../engine/chemistry';
 
 export function ModalHost() {
   const modal = useGame((s) => s.modal);
@@ -580,12 +581,14 @@ function PregameModal({ gameId }: { gameId: string }) {
             <TeamLogo team={user} size={130} />
             <div className="h2" style={{ marginTop: 8 }}>{user.apRank ? <span className="rank">#{user.apRank}</span> : null}{user.school}</div>
             <div className="small muted">{user.record.w}-{user.record.l}</div>
+            <ChemTag t={user} />
           </motion.div>
           <motion.div initial={{ scale: 3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.35, type: 'spring', stiffness: 300, damping: 12 }} className="num text-glow" style={{ fontSize: 80, fontStyle: 'italic' }}>VS</motion.div>
           <motion.div initial={{ x: 200, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 120, damping: 14 }} style={{ textAlign: 'center', flex: 1 }}>
             <TeamLogo team={opp} size={130} />
             <div className="h2" style={{ marginTop: 8 }}>{opp.apRank ? <span className="rank">#{opp.apRank}</span> : null}{opp.school}</div>
             <div className="small muted">{opp.record.w}-{opp.record.l}</div>
+            <ChemTag t={opp} />
           </motion.div>
         </div>
         {!game.neutral && loreOf(game.home)?.crowd && <div className="small lore-crowd" style={{ textAlign: 'center', marginTop: 14 }}>🎙️ “{loreOf(game.home)!.crowd}”</div>}
@@ -648,3 +651,8 @@ function keysToGame(g: GameState, oppId: string): string[] {
 }
 
 export type { Player };
+
+function ChemTag({ t }: { t: Team }) {
+  const l = chemLabel(t.chem ?? 60);
+  return <div className={`tiny ${l.tone}`} style={{ marginTop: 3 }} title="Team chemistry: a small edge in every rating and in the clutch">{l.icon} {l.label} chemistry</div>;
+}

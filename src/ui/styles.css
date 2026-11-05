@@ -569,3 +569,24 @@ input[type='range'] { accent-color: var(--accent); width: 100%; }
 .booster-row { gap: 12px; padding: 8px 10px; border-radius: 12px; background: rgba(255,255,255,.025); border: 1px solid var(--line); }
 .race-row { gap: 10px; padding: 5px 8px; border-radius: 10px; }
 .race-row.mine { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+/* ---------------- locker room ---------------- */
+.lk-table { display: flex; flex-direction: column; gap: 2px; }
+.lk-row { display: grid; grid-template-columns: 42px minmax(0, 1.6fr) 96px minmax(0, 1.2fr) 150px; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px; cursor: pointer; }
+.lk-row:hover { background: rgba(255,255,255,.04); }
+.lk-row.cap { background: linear-gradient(90deg, rgba(246,201,76,.10), transparent 60%); }
+.lk-head { cursor: default; padding-top: 0; padding-bottom: 2px; }
+.lk-head:hover { background: none; }
+.lk-log { gap: 8px; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+.lk-fbar { position: relative; width: 120px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.06); }
+.lk-fbar::after { content: ''; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: rgba(255,255,255,.25); }
+.lk-fbar i { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+.lk-fbar i.pos { left: 50%; background: linear-gradient(90deg, #1fa36f, #22d38f); }
+.lk-fbar i.neg { right: 50%; background: linear-gradient(270deg, #ff5d5d, #ff9b52); }
+.lk-pick { gap: 10px; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--line); cursor: pointer; transition: border-color .15s, background .15s; }
+.lk-pick:hover { background: rgba(255,255,255,.03); }
+.lk-pick.on { border-color: rgba(246,201,76,.7); background: rgba(246,201,76,.08); }
+.lk-check { width: 26px; height: 26px; border-radius: 13px; border: 2px solid var(--line); display: grid; place-items: center; font-weight: 800; color: #111; }
+.lk-check.on { background: var(--gold); border-color: var(--gold); }
+.lk-c { position: absolute; right: -4px; bottom: -2px; width: 24px; height: 24px; border-radius: 12px; background: var(--gold); color: #111; font-weight: 900; display: grid; place-items: center; font-size: 13px; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+@media (max-width: 900px) { .lk-row { grid-template-columns: 42px minmax(0, 1fr) 120px; } .lk-row > :nth-child(3), .lk-row > :nth-child(4) { display: none; } }

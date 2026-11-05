@@ -22,6 +22,7 @@ import { airEpisode } from './radio';
 import { pstatsState } from './pstats';
 import { ensureRivalries } from './rivalry';
 import { ensureBuild } from './facilities';
+import { chemistryNewSeason } from './chemistry';
 
 export const START_SEASON = 2026;
 export const SAVE_VERSION = 2;
@@ -182,6 +183,7 @@ export function createWorld(opts: NewGameOptions): GameState {
   pstatsState(state);
   ensureRivalries(state);
   ensureBuild(state);
+  chemistryNewSeason(state);
   airEpisode(state, 'preview', { debut: true });
   return state;
 }

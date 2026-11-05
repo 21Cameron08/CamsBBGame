@@ -104,10 +104,10 @@ const GENERATORS: { w: number; phase: ('regular' | 'preseason' | 'confTourney' |
         from: 'Team Captain', fromRole: 'Locker Room', subject: 'Locker room tension',
         body: `${a.first} ${a.last} and ${b.first} ${b.last} got into it at practice — words were exchanged over shots and minutes. The team is watching how you handle it.`,
         choices: [
-          { label: 'Team meeting — clear the air', hint: 'Team morale +', effects: [{ kind: 'morale', target: 'team', delta: 3 }, { kind: 'morale', target: a.id, delta: -2 }], result: `Hugs all around. Mostly.` },
-          { label: `Back ${a.last}`, hint: `${a.last} +, ${b.last} −`, effects: [{ kind: 'morale', target: a.id, delta: 8 }, { kind: 'morale', target: b.id, delta: -10 }], result: `${b.last} isn't thrilled.` },
-          { label: `Back ${b.last}`, hint: `${b.last} +, ${a.last} −`, effects: [{ kind: 'morale', target: b.id, delta: 8 }, { kind: 'morale', target: a.id, delta: -10 }], result: `${a.last} is sulking.` },
-          { label: 'Suspend both for a half', hint: 'Discipline; media respect', effects: [{ kind: 'morale', target: a.id, delta: -4 }, { kind: 'morale', target: b.id, delta: -4 }, { kind: 'mediaRep', delta: 3 }, { kind: 'morale', target: 'team', delta: 1 }], result: `Message sent: nobody is bigger than the team.` },
+          { label: 'Team meeting — clear the air', hint: 'Team morale and chemistry +', effects: [{ kind: 'morale', target: 'team', delta: 3 }, { kind: 'morale', target: a.id, delta: -2 }, { kind: 'chem', delta: 2 }], result: `Hugs all around. Mostly.` },
+          { label: `Back ${a.last}`, hint: `${a.last} +, ${b.last} −`, effects: [{ kind: 'morale', target: a.id, delta: 8 }, { kind: 'morale', target: b.id, delta: -10 }, { kind: 'chem', delta: -1 }], result: `${b.last} isn't thrilled.` },
+          { label: `Back ${b.last}`, hint: `${b.last} +, ${a.last} −`, effects: [{ kind: 'morale', target: b.id, delta: 8 }, { kind: 'morale', target: a.id, delta: -10 }, { kind: 'chem', delta: -1 }], result: `${a.last} is sulking.` },
+          { label: 'Suspend both for a half', hint: 'Discipline; media respect', effects: [{ kind: 'morale', target: a.id, delta: -4 }, { kind: 'morale', target: b.id, delta: -4 }, { kind: 'mediaRep', delta: 3 }, { kind: 'morale', target: 'team', delta: 1 }, { kind: 'chem', delta: 1 }], result: `Message sent: nobody is bigger than the team.` },
         ],
       });
     },
