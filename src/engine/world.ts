@@ -31,6 +31,8 @@ export interface NewGameOptions {
   teamId: string;
   coach: { first: string; last: string; age: number; archetype: CoachArchetype; almaMater?: string; hometown?: string; face?: Record<string, unknown> };
   difficulty: Settings['difficulty'];
+  /** conference realignment, chosen with difficulty */
+  realignment?: Settings['realignment'];
   /** custom team overrides (mods) keyed by team id */
   overrides?: Record<string, Partial<TeamDef>>;
 }
@@ -94,7 +96,7 @@ export function createWorld(opts: NewGameOptions): GameState {
       teamId: opts.teamId, coachId: '', hours: 40, hoursMax: 40, press: null, moments: [], board: [],
       expectation: '', expectationLevel: 0, offers: [], fired: false, retention: {}, scoutedTeams: [], achievements: [],
     },
-    settings: { difficulty: opts.difficulty, sound: true, liveSpeed: 1, autoPress: false, confirmAdvance: false },
+    settings: { difficulty: opts.difficulty, sound: true, liveSpeed: 1, autoPress: false, confirmAdvance: false, realignment: opts.realignment ?? 'realistic' },
     champions: [],
     log: [],
     offseason: null,

@@ -146,6 +146,8 @@ export interface TeamSeasonHistory {
   ncaaSeed: number | null;
   /** e.g. 'Champion', 'Runner-up', 'Final Four', 'Elite Eight', 'Sweet 16', 'Round of 32', 'Round of 64', 'First Four', 'NIT', '' */
   postseason: string;
+  /** conference that season (older saves: not recorded) */
+  conf?: string;
   apFinal: number | null;
   coachId: string;
   rating: number;
@@ -382,6 +384,8 @@ export interface InboxChoice {
   staffRenew?: boolean;
   /** UI: jump to a screen after choosing */
   goto?: string;
+  /** conference invitation decision */
+  realign?: { moveId: string; accept: boolean };
   /** short preview of effects shown in UI */
   hint?: string;
   effects: Effect[];
@@ -613,6 +617,8 @@ export interface Settings {
   autoPress: boolean;
   /** let assistants run recruiting + portal for the user's team */
   autoRecruit?: boolean;
+  /** conference realignment (chosen with difficulty when the dynasty starts; older saves: off) */
+  realignment?: RealignMode;
   confirmAdvance: boolean;
 }
 
@@ -666,7 +672,8 @@ export type Moment =
   | { kind: 'portalDay'; day: number; results: { playerId: string; teamId: string; won: boolean }[] }
   | { kind: 'selection'; season: number; press?: PressConference | null }
   | { kind: 'rivalry'; key: string; teamId: string; oppId: string; label: string; sub: string; trophy?: string }
-  | { kind: 'awards'; season: number; press?: PressConference | null };
+  | { kind: 'awards'; season: number; press?: PressConference | null }
+  | { kind: 'conference'; teamId: string; from: string; to: string };
 
 export interface GameState {
   version: number;
@@ -707,6 +714,8 @@ export interface GameState {
   staff?: StaffState;
   /** jerseys retired during the dynasty (created on first use) */
   legacy?: { retired: Record<string, RetiredJersey[]> };
+  /** conference realignment moves, announced and completed */
+  realign?: { moves: RealignMove[] };
   /** Awards Night shows (recent seasons) and the Hall of Fame (older saves start without them) */
   awardsShows?: AwardsShowData[];
   hof?: HallOfFame;
@@ -1092,4 +1101,22 @@ export interface AwardsShowData {
   categories: AwardCategory[];
   allAmerica: { first: AwardNominee[]; second: AwardNominee[]; third: AwardNominee[] };
   hof: HofInductee[];
+}
+
+// ---------------- Conference realignment ----------------
+export type RealignMode = 'off' | 'realistic' | 'chaos';
+export interface RealignMove {
+  id: string;
+  teamId: string;
+  from: string;
+  to: string;
+  /** season it was announced (at that season's end) */
+  season: number;
+  /** first season in the new conference */
+  effective: number;
+  kind: 'up' | 'lateral' | 'backfill';
+  reason: string;
+  status: 'pending' | 'done' | 'declined';
+  /** the user's school was invited and gets a say */
+  userChoice?: boolean;
 }

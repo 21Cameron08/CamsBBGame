@@ -6,6 +6,8 @@ import { TV_NETWORKS } from '../data/names';
 import { reservedTeams } from './scheduling';
 
 const NONCONF_GAMES = 12;
+/** teams in small conferences (realignment) pick up extra non-conference games to reach this total */
+const MIN_TOTAL_GAMES = 26;
 
 const MTE_EVENTS = [
   'Maui Shootout', 'Paradise Island Classic', 'Vegas Hardwood Showcase', 'Empire Classic', 'Sunshine Slam',
@@ -160,12 +162,14 @@ export function generateSchedule(state: GameState): ScheduledGame[] {
   // ---- 4. Fill remaining non-conference games ----
   const tierOf: Record<string, number> = {};
   for (const t of teams) tierOf[t.id] = confTier(state, t);
+  const quota: Record<string, number> = {};
+  for (const t of teams) quota[t.id] = Math.max(NONCONF_GAMES, Math.min(NONCONF_DAYS - 1, MIN_TOTAL_GAMES - confGamesOf(games, t.id)));
   for (let day = 1; day <= NONCONF_DAYS; day++) {
     const remainingDays = NONCONF_DAYS - day + 1;
-    const avail = teams.filter((t) => !busy[day].has(t.id) && gameCount[t.id] - confGamesOf(games, t.id) < NONCONF_GAMES);
+    const avail = teams.filter((t) => !busy[day].has(t.id) && gameCount[t.id] - confGamesOf(games, t.id) < quota[t.id]);
     // probability to play today so games spread evenly
     const want = rng.shuffle(avail.filter((t) => {
-      const need = NONCONF_GAMES - (gameCount[t.id] - confGamesOf(games, t.id));
+      const need = quota[t.id] - (gameCount[t.id] - confGamesOf(games, t.id));
       return rng.chance(Math.min(1, need / remainingDays + 0.05));
     }));
     const used = new Set<string>();

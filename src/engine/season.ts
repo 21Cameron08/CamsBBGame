@@ -21,6 +21,7 @@ import { autoSignUnsigned } from './nil';
 import { staffEffects, resolvePoach, applyStaffRenewChoice } from './staff';
 import { radioWeekly } from './radio';
 import { rivalryOf, rivalCrowd, rivalryResult, rivalryWeek, rivalryRecruit } from './rivalry';
+import { answerInvitation } from './realignment';
 
 export function isUserGame(state: GameState, g: ScheduledGame) {
   return g.home === state.user.teamId || g.away === state.user.teamId;
@@ -314,6 +315,7 @@ export function resolveInbox(state: GameState, id: string, choiceIdx: number): s
   if (ch.autoNil) autoSignUnsigned(state);
   if (ch.staffPoach) resolvePoach(state, ch.staffPoach.staffId, ch.staffPoach.teamId, ch.staffPoach.keep);
   if (ch.staffRenew != null) applyStaffRenewChoice(state, ch.staffRenew);
+  if (ch.realign) answerInvitation(state, ch.realign.moveId, ch.realign.accept);
   if (ch.redshirt) {
     const p = state.players[ch.redshirt];
     if (p) p.redshirting = true;

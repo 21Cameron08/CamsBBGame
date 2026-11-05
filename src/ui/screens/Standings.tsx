@@ -3,8 +3,9 @@ import { motion } from 'framer-motion';
 import { useGame, useGameState } from '../../store/gameStore';
 import { TeamLogo, TeamName, Section } from '../components/common';
 import { confStandings } from '../../engine/rankings';
-import type { Team } from '../../engine/types';
 import { seasonLabel } from '../../engine/calendar';
+import { newcomer, pendingMoves, recentMoves, realignMode, REALIGN_INFO } from '../../engine/realignment';
+import type { GameState, RealignMove, Team } from '../../engine/types';
 
 function streakStr(s: number) {
   if (s === 0) return '—';
@@ -99,7 +100,7 @@ export function StandingsScreen() {
                   <tr key={t.id} style={{ animationDelay: `${Math.min(i * 20, 400)}ms` }}
                     className={`click row-in ${t.id === g.user.teamId ? 'me' : ''}`} onClick={() => open({ kind: 'team', id: t.id })}>
                     <td className="c num" style={{ fontSize: 16, color: i === 0 ? 'var(--gold)' : undefined }}>{i + 1}</td>
-                    <td><span className="row" style={{ gap: 8 }}><span style={{ width: 3, height: 22, borderRadius: 2, background: t.colors[0] }} /><TeamLogo team={t} size={24} /><span className="b">{t.school}</span></span></td>
+                    <td><span className="row" style={{ gap: 8 }}><span style={{ width: 3, height: 22, borderRadius: 2, background: t.colors[0] }} /><TeamLogo team={t} size={24} /><span className="b">{t.school}</span>{newcomer(g, t.id) && <span className="pill good" style={{ fontSize: 9.5, padding: '1px 6px' }} title="Joined the conference this season">NEW</span>}</span></td>
                     <td className="r num" style={{ fontSize: 15 }}>{t.record.cw}-{t.record.cl}</td>
                     <td className="r mono muted">{pct(t.record.cw, t.record.cl)}</td>
                     <td className="r mono muted">{gb(t)}</td>
@@ -121,6 +122,8 @@ export function StandingsScreen() {
         </div>
       </div>
 
+      <RealignTracker g={g} onConf={setConfId} />
+
       <Section title="Around the Country · Conference Leaders">
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
           {leaders.map(({ c, t }) => (
@@ -136,5 +139,41 @@ export function StandingsScreen() {
         </div>
       </Section>
     </div>
+  );
+}
+
+function RealignTracker({ g, onConf }: { g: GameState; onConf: (id: string) => void }) {
+  const mode = realignMode(g);
+  const pending = pendingMoves(g);
+  const recent = recentMoves(g, 3);
+  if (mode === 'off' && !pending.length && !recent.length) return null;
+  const conf = (id: string) => g.conferences.find((c) => c.id === id);
+  const uid = g.user.teamId;
+  const row = (m: RealignMove, done: boolean) => {
+    const t = g.teams[m.teamId], from = conf(m.from), to = conf(m.to);
+    if (!t || !from || !to) return null;
+    return (
+      <div key={m.id} className="row" style={{ gap: 8, padding: '6px 0', borderBottom: '1px solid var(--line)', background: t.id === uid ? 'rgba(246,201,76,.07)' : undefined }}>
+        <TeamLogo team={t} size={24} />
+        <span className="small b" style={{ width: 150 }}>{t.school}</span>
+        <span className="pill" style={{ cursor: 'pointer', borderColor: from.color }} onClick={() => onConf(from.id)}>{from.short}</span>
+        <span className="muted">→</span>
+        <span className="pill" style={{ cursor: 'pointer', borderColor: to.color }} onClick={() => onConf(to.id)}>{to.short}</span>
+        <span className="tiny muted ellipsis" style={{ flex: 1 }}>{m.kind === 'lateral' ? 'Poached' : m.kind === 'backfill' ? 'Backfill' : 'Moving up'}{done ? ` · since ${seasonLabel(m.effective)}` : ` · effective ${seasonLabel(m.effective)}`}</span>
+      </div>
+    );
+  };
+  return (
+    <Section title="Conference Realignment" right={<span className="tiny muted">Setting: <b>{REALIGN_INFO[mode].label}</b></span>}>
+      {pending.length > 0 && <>
+        <div className="eyebrow" style={{ marginBottom: 6 }}>Announced · takes effect next season</div>
+        {pending.map((m) => row(m, false))}
+      </>}
+      {recent.length > 0 && <>
+        <div className="eyebrow" style={{ margin: pending.length ? '14px 0 6px' : '0 0 6px' }}>Recent moves</div>
+        {recent.map((m) => row(m, true))}
+      </>}
+      {!pending.length && !recent.length && <div className="small muted">No moves yet. Commissioners are watching the money. Moves get announced when a season ends.</div>}
+    </Section>
   );
 }

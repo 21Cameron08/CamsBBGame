@@ -47,6 +47,11 @@ function MomentView({ g, m }: { g: GameState; m: Moment }) {
       const t = g.teams[m.teamId];
       return <TitleMoment team={t} label={m.label} onDone={dismiss} />;
     }
+    case 'conference': {
+      const t = g.teams[m.teamId];
+      const from = g.conferences.find((c) => c.id === m.from), to = g.conferences.find((c) => c.id === m.to);
+      return <ConferenceMoment team={t} from={from?.name ?? m.from} to={to?.name ?? m.to} toShort={to?.short ?? ''} toColor={to?.color ?? '#f6c94c'} onDone={dismiss} />;
+    }
     case 'rivalry': {
       const t = g.teams[m.teamId], o = g.teams[m.oppId];
       return <RivalryMoment team={t} opp={o} label={m.label} sub={m.sub} trophy={m.trophy} onDone={dismiss} />;
@@ -282,6 +287,25 @@ function RivalryMoment({ team, opp, label, sub, trophy, onDone }: { team: Team; 
         <div className="num" style={{ fontSize: 'clamp(34px, 6vw, 64px)', lineHeight: 1.02, marginTop: 6, textShadow: `0 0 36px ${team.colors[0]}` }}>{label.toUpperCase()}</div>
         <div className="muted" style={{ marginTop: 10 }}>{sub}</div>
         <button className="btn gold lg" style={{ marginTop: 22 }} onClick={onDone}>Hoist it 🏆</button>
+      </motion.div>
+    </Shell>
+  );
+}
+
+function ConferenceMoment({ team, from, to, toShort, toColor, onDone }: { team: Team; from: string; to: string; toShort: string; toColor: string; onDone: () => void }) {
+  useEffect(() => { sfx.fanfare(); sfx.crowd(1.2); }, []);
+  return (
+    <Shell colors={team.colors} onClose={onDone}>
+      <motion.div initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 170, damping: 14 }} style={{ textAlign: 'center', maxWidth: 820 }}>
+        <div className="eyebrow" style={{ color: '#ffd27a' }}>Conference Realignment</div>
+        <div className="row" style={{ justifyContent: 'center', gap: 22, marginTop: 16, alignItems: 'center' }}>
+          <motion.div initial={{ x: 0, opacity: 1 }} animate={{ x: -20, opacity: 0.45 }} transition={{ delay: 0.4, duration: 0.8 }} className="h3" style={{ maxWidth: 220 }}>{from}</motion.div>
+          <motion.div initial={{ scale: 0.5 }} animate={{ scale: 1 }} transition={{ delay: 0.6, type: 'spring' }}><TeamLogo team={team} size={130} /></motion.div>
+          <motion.div initial={{ x: 30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.9, duration: 0.6 }} className="h3" style={{ maxWidth: 220, color: toColor }}>{to}</motion.div>
+        </div>
+        <motion.div className="num" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.1 }} style={{ fontSize: 'clamp(36px, 6vw, 70px)', lineHeight: 1.02, marginTop: 18, textShadow: `0 0 36px ${team.colors[0]}` }}>WELCOME TO THE {toShort.toUpperCase()}</motion.div>
+        <div className="muted" style={{ marginTop: 10 }}>{team.school} starts a new chapter this season: new opponents, new road trips, new rivals.</div>
+        <button className="btn gold lg" style={{ marginTop: 22 }} onClick={onDone}>Let's go</button>
       </motion.div>
     </Shell>
   );

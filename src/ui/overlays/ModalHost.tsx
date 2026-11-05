@@ -443,12 +443,12 @@ function TeamModal({ id }: { id: string }) {
         )}
         {tab === 'history' && (
           <table className="table">
-            <thead><tr><th>Season</th><th className="r">Record</th><th className="r">Conf</th><th>Postseason</th><th className="r">AP</th></tr></thead>
+            <thead><tr><th>Season</th><th>League</th><th className="r">Record</th><th className="r">Conf</th><th>Postseason</th><th className="r">AP</th></tr></thead>
             <tbody>
               {[...t.history].reverse().map((h) => (
-                <tr key={h.season}><td>{seasonLabel(h.season)}</td><td className="r">{h.w}-{h.l}</td><td className="r">{h.cw}-{h.cl}</td><td>{h.postseason || '—'}{h.ncaaSeed ? ` (${h.ncaaSeed})` : ''}</td><td className="r">{h.apFinal ?? '—'}</td></tr>
+                <tr key={h.season}><td>{seasonLabel(h.season)}</td><td className="small muted">{g.conferences.find((c) => c.id === (h.conf ?? t.conf))?.short}</td><td className="r">{h.w}-{h.l}</td><td className="r">{h.cw}-{h.cl}</td><td>{h.postseason || '—'}{h.ncaaSeed ? ` (${h.ncaaSeed})` : ''}</td><td className="r">{h.apFinal ?? '—'}</td></tr>
               ))}
-              {!t.history.length && <tr><td colSpan={5} className="muted">History begins this season. Prestige: {Math.round(t.prestige)}.</td></tr>}
+              {!t.history.length && <tr><td colSpan={6} className="muted">History begins this season. Prestige: {Math.round(t.prestige)}.</td></tr>}
             </tbody>
           </table>
         )}

@@ -14,6 +14,7 @@ import { recordBook } from './records';
 import { seasonLabel } from './calendar';
 import { normCdf } from './sim';
 import { rivalryOf as activeRivalry, rivalriesOf, userRivalryThisWeek, heatInfo, seriesFor } from './rivalry';
+import { pendingMoves } from './realignment';
 
 export const SHOW = { name: 'Full Court Fanatics', station: '98.7 The Hoop', slot: 'Monday nights', tagline: 'Two guys. Zero chill. All takes.' };
 export const HOSTS: Record<RadioHost, { name: string; nick: string; short: string; seed: string; colors: [string, string]; bio: string }> = {
@@ -554,6 +555,33 @@ function rivalrySeg(c: Ctx): RadioSegment | null {
   return null;
 }
 
+function realignSeg(c: Ctx): RadioSegment | null {
+  const { state, r, U } = c;
+  const conf = (id: string) => state.conferences.find((x) => x.id === id)?.short ?? id;
+  const pending = pendingMoves(state);
+  const lines: RadioLine[] = [];
+  if (pending.length && fresh(c, `rl:${state.season}`)) {
+    use(c, `rl:${state.season}`);
+    lines.push(S(r.pick([`REALIGNMENT, Dex! The map is moving again!`, `Commissioners are on the phones, and Big Sal is on the edge of his seat.`])));
+    lines.push(D(`Here's what's been announced for next season: ${pending.slice(0, 4).map((m) => `${state.teams[m.teamId]?.school} from the ${conf(m.from)} to the ${conf(m.to)}`).join('; ')}.`, 'info'));
+    const mine = pending.find((m) => m.teamId === U.id);
+    if (mine) lines.push(S(r.pick([`And ${U.school} has an invitation from the ${conf(mine.to)}! Take the money! Take the money and the fancier chairs!`, `${U.school} to the ${conf(mine.to)}? Coach ${c.coach.last}, think about the road trips! Then take it anyway!`]), 'hot'), D(`Bigger checks, tougher nights. It's a real decision.`, 'good'));
+    else if (pending.some((m) => m.from === U.conf)) lines.push(S(`And somebody's leaving ${U.school}'s league. Good riddance! Don't let the door hit you!`, 'hot'));
+    else lines.push(S(r.pick([`Geography is dead, Dex. Dead!`, `In my day conferences made sense. My day was last Tuesday.`]), 'hot'), D(`Follow the TV money and it all makes sense.`, 'good'));
+    head(c, 6, 'Realignment Watch');
+    return { title: 'Realignment Watch', icon: '🗺️', lines };
+  }
+  const fresh_ = (state.realign?.moves ?? []).filter((m) => m.status === 'done' && m.effective === state.season);
+  if (fresh_.length && fresh(c, `rlnew:${state.season}`)) {
+    use(c, `rlnew:${state.season}`);
+    const mine = fresh_.find((m) => m.teamId === U.id);
+    lines.push(D(`New season, new map: ${fresh_.slice(0, 4).map((m) => `${state.teams[m.teamId]?.school} in the ${conf(m.to)}`).join(', ')}.`, 'info'));
+    lines.push(mine ? S(`${U.school} in the ${conf(mine.to)}! Welcome to the big time, baby! I already bought the T-shirt!`, 'hot') : S(r.pick([`I give the newcomers one year before they're homesick.`, `Somebody's about to get a rude welcome in their new league.`]), 'hot'));
+    return { title: 'New Neighbors', icon: '🗺️', lines };
+  }
+  return null;
+}
+
 /** calls about the user's team come from the user's town */
 const LOCAL_CALLS = new Set([0, 1, 7, 10, 11, 15]);
 function hotlineSeg(c: Ctx): RadioSegment {
@@ -839,6 +867,8 @@ function previewEpisode(c: Ctx, debut: boolean): RadioSegment[] {
   segs.push({ title: `${U.school} Preview`, icon: '🏠', lines: ul });
   const rs = rivalrySeg(c);
   if (rs) segs.push(rs);
+  const rl = realignSeg(c);
+  if (rl) segs.push(rl);
   const poll = ranked(state).slice(0, 5);
   if (poll.length === 5) segs.push({ title: 'Preseason Top 5', icon: '📊', lines: [D(`Your preseason top five: ${poll.map((t, i) => `${i + 1}. ${t.school}`).join(', ')}.`, 'info'), S(r.pick([`I'd move ${poll[3].school} to No. 1 and I'd sleep like a baby.`, `${poll[0].school} at No. 1? In October? Bold, voters. Bold.`]), 'hot')] });
   segs.push(outroSeg(c, [S(`Predictions are locked in. No take-backs.`), D(`I wrote them down. In pen.`)]));
@@ -887,6 +917,8 @@ function finaleEpisode(c: Ctx): RadioSegment[] {
     L.push(grade.startsWith('A') ? D(`Hard to argue. Historic stuff.`) : grade === 'F' ? D(`Harsh. Accurate, but harsh.`) : D(r.pick([`I'd say that's fair.`, `I'd go a half-grade higher. The numbers were better than the record.`])));
     segs.push({ title: `${U.school} Report Card`, icon: '📋', lines: L });
   }
+  const rl = realignSeg(c);
+  if (rl) segs.push(rl);
   const [sw, sl] = R.record.sal, [dw, dl] = R.record.dex;
   const out: RadioLine[] = [];
   if (sw + sl + dw + dl > 0) {

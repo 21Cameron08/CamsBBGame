@@ -25,6 +25,7 @@ import { airEpisode, radioOffseason } from './radio';
 import { runAwards, stageAwardsNight } from './awards';
 import { finalizeProgramSeason, coachExit, recordClassRanks } from './pstats';
 import { rivalrySeasonEnd, rivalryCoachMove } from './rivalry';
+import { planRealignment, applyRealignment } from './realignment';
 
 const NCAA_BONUS: Record<string, number> = { Champion: 30, 'Runner-up': 22, 'Final Four': 18, 'Elite Eight': 12, 'Sweet 16': 8, 'Round of 32': 4, 'Round of 64': 1, 'First Four': 0.5 };
 
@@ -71,7 +72,7 @@ export function beginSeasonEnd(state: GameState) {
       season: state.season, w: t.record.w, l: t.record.l, cw: t.record.cw, cl: t.record.cl,
       confFinish: confFinish[t.id] ?? 0, confChamp: confChamps[t.conf] === t.id,
       confTourneyChamp: state.confTourneys[t.conf]?.champion === t.id,
-      ncaaSeed: state.ncaa?.seeds[t.id] ?? null, postseason: res, apFinal: t.apRank, coachId: t.coachId, rating: t.rating,
+      ncaaSeed: state.ncaa?.seeds[t.id] ?? null, postseason: res, apFinal: t.apRank, coachId: t.coachId, rating: t.rating, conf: t.conf,
     };
     t.history.push(h);
     const perf = clamp(50 + t.rating * 1.6 + (NCAA_BONUS[res] ?? 0), 0, 100);
@@ -118,6 +119,7 @@ export function beginSeasonEnd(state: GameState) {
   // program stats for the season, before the carousel moves coaches around
   finalizeProgramSeason(state);
   rivalrySeasonEnd(state);
+  planRealignment(state);
   // coaching carousel
   const carousel = runCarousel(state);
   state.user.fired = fired;
@@ -414,6 +416,7 @@ export function doProgression(state: GameState) {
 
 // ---------------- New season ----------------
 export function newSeason(state: GameState) {
+  applyRealignment(state); // safety: anything announced but not yet official
   pressOffseasonRecap(state);
   state.season++;
   state.day = 0;
@@ -496,7 +499,7 @@ export function advanceOffseason(state: GameState) {
     case 'portal': if (advancePortalDay(state) === 'closed') doSigning(state); break;
     case 'signing': doDraft(state); break;
     case 'draft': beginSummer(state); break;
-    case 'progression': if (!summerDone(state)) runSummer(state); else openScheduling(state); break;
+    case 'progression': if (!summerDone(state)) runSummer(state); else { applyRealignment(state); openScheduling(state); } break;
     case 'scheduling': lockScheduling(state); newSeason(state); break;
     default: break;
   }

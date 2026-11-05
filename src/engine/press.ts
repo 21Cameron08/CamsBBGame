@@ -15,6 +15,7 @@ import { FOCUS_INFO } from './development';
 import { recordsInGame, GAME_CATS, TEAM_GAME_CATS, fmtRec } from './records';
 import { loreOf, ringOfHonor, retiredJerseys } from './legacy';
 import { rivalryOf } from './rivalry';
+import { newcomer, pendingMoves } from './realignment';
 
 type Tone = PressQuestion['answers'][number]['tone'];
 type Answer = PressQuestion['answers'][number];
@@ -795,6 +796,20 @@ export function mediaDayPresser(state: GameState): PressConference {
     ]),
   });
   cands.push(funQuestion(state, team, 'md'));
+  // first season in a new conference
+  if (newcomer(state, team.id) && c.conf) {
+    const prev = team.history[team.history.length - 1]?.conf;
+    const old = state.conferences.find((x) => x.id === prev);
+    const tougher = old && c.conf.tier < old.tier;
+    cands.push({
+      key: 'md.newConf', topic: 'conference', w: 12, lead: true,
+      build: () => makeQ(team, { role: 'national', tag: 'Realignment' }, tougher ? `First season in the ${c.conf!.short}. Is ${team.school} ready for this every night?` : `New league, new road trips. What does the move to the ${c.conf!.short} mean for ${team.school}?`, [
+        A('confident', `We didn't come here to be a member. We came here to win it.`, [{ kind: 'hype', delta: 7 }, { kind: 'security', delta: -2 }], { kind: 'confTitle' }),
+        A('humble', `It's a big step. We'll take our lumps, learn fast, and earn our place.`, [{ kind: 'mediaRep', delta: 4 }, { kind: 'security', delta: 2 }]),
+        A('joke', `I've been studying the league's road trips. I'm mostly excited about the airport food.`, [{ kind: 'hype', delta: 3 }, { kind: 'mediaRep', delta: 3 }]),
+      ]),
+    });
+  }
   cands.push(...loreCands(state, c, 'md'));
 
   // ---- holding him to last season's promises ----
@@ -1434,6 +1449,19 @@ export function seasonEndPresser(state: GameState, summary: string): PressConfer
   const achieved = os?.achieved ?? 0;
   const goal = state.user.expectationLevel;
   const cands: Cand[] = [];
+  // your school has a conference invitation on the table
+  const invite = pendingMoves(state).find((m) => m.teamId === team.id && m.userChoice);
+  if (invite) {
+    const to = state.conferences.find((x) => x.id === invite.to);
+    cands.push({
+      key: 'se.invite', topic: 'conference', w: 14, lead: true,
+      build: () => makeQ(team, { role: 'national', tag: 'Realignment' }, `Reports say the ${to?.short} has invited ${team.school}. Will you be in the ${to?.short} next season?`, [
+        A('confident', `If it's right for this program, we'll take that step. We belong at that level.`, [{ kind: 'hype', delta: 5 }]),
+        A('deflect', `That's a conversation for our administration. I coach basketball.`, [{ kind: 'mediaRep', delta: -1 }]),
+        A('humble', `We're proud of where we are. Whatever happens, our fans come first.`, [{ kind: 'mediaRep', delta: 3 }, { kind: 'security', delta: 1 }]),
+      ]),
+    });
+  }
 
   const verdict = achieved > goal ? 'over' : achieved === goal ? 'met' : 'under';
   cands.push({ key: `se.grade.${verdict}`, topic: 'grade', w: 10, lead: true, build: () => makeQ(team, { role: 'beat' }, verdict === 'over'

@@ -15,6 +15,8 @@ import { teamAccent, textOn } from '../color';
 import { Ball } from '../shell/Feedback';
 import { sfx } from '../sound';
 import type { GameState } from '../../engine/types';
+import { REALIGN_INFO } from '../../engine/realignment';
+import type { RealignMode } from '../../engine/types';
 
 export function TitleScreen() {
   const [mode, setMode] = useState<'title' | 'new'>('title');
@@ -144,6 +146,7 @@ function NewDynasty({ onBack }: { onBack: () => void }) {
   const [alma, setAlma] = useState('');
   const [arch, setArch] = useState<CoachArchetype>('Recruiter');
   const [diff, setDiff] = useState<Settings['difficulty']>('pro');
+  const [realign, setRealign] = useState<RealignMode>('realistic');
   const [face, setFace] = useState<FaceConfig>(() => randomizeFace({ role: 'coach', age: 38 }));
   const [teamId, setTeamId] = useState<string>('indiana');
   const [tier, setTier] = useState(0);
@@ -166,7 +169,7 @@ function NewDynasty({ onBack }: { onBack: () => void }) {
 
   const start = async () => {
     sfx.fanfare();
-    await newGame({ teamId, difficulty: diff, coach: { first: first.trim() || 'Coach', last: last.trim() || 'Smith', age, archetype: arch, almaMater: alma || undefined, face: { ...face, role: 'coach', age } as unknown as Record<string, unknown> } });
+    await newGame({ teamId, difficulty: diff, realignment: realign, coach: { first: first.trim() || 'Coach', last: last.trim() || 'Smith', age, archetype: arch, almaMater: alma || undefined, face: { ...face, role: 'coach', age } as unknown as Record<string, unknown> } });
   };
 
   return (
@@ -257,6 +260,17 @@ function NewDynasty({ onBack }: { onBack: () => void }) {
                   ))}
                 </div>
               </div>
+              <div className="card">
+                <div className="row" style={{ marginBottom: 12 }}><div className="h3" style={{ flex: 1 }}>Conference Realignment</div><span className="tiny muted">You can change this later in Settings</span></div>
+                <div className="grid g3">
+                  {(['off', 'realistic', 'chaos'] as RealignMode[]).map((id) => (
+                    <div key={id} className="card" onClick={() => setRealign(id)} style={{ cursor: 'pointer', padding: 14, borderColor: realign === id ? 'var(--accent)' : undefined }}>
+                      <div className="b">{id === 'off' ? '🔒' : id === 'realistic' ? '🗺️' : '🌪️'} {REALIGN_INFO[id].label}</div>
+                      <div className="tiny muted">{REALIGN_INFO[id].desc}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
               <div className="row"><div className="spacer" /><button className="btn primary lg" onClick={() => { sfx.whoosh(); setStep(1); }}>Next: Choose Your School →</button></div>
             </div>
           </motion.div>
@@ -323,6 +337,7 @@ function NewDynasty({ onBack }: { onBack: () => void }) {
                   <span>Contract</span><span>5 years</span>
                   <span>NIL + Rev-Share Pool</span><span>~{fmtMoneyShort(nilBudgetFor(team, CONFERENCES.find((c) => c.id === team.conf)))} / yr</span>
                   <span>Difficulty</span><span className="upper b">{diff}</span>
+                  <span>Realignment</span><span className="b">{REALIGN_INFO[realign].label}</span>
                 </div>
                 <div className="row" style={{ marginTop: 26 }}>
                   <div className="muted small">Your introductory press conference starts the moment you sign.</div>

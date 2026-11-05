@@ -278,14 +278,16 @@ export function HistoryScreen() {
 
 function RecentChampsByConf({ g }: { g: GameState }) {
   const team = g.teams[g.user.teamId];
-  const confTeams = Object.values(g.teams).filter((t) => t.conf === team.conf);
+  // members that season (the history records each season's conference; older entries assume today's)
+  const inConf = (t: GameState['teams'][string], s: number) => (t.history.find((h) => h.season === s)?.conf ?? t.conf) === team.conf;
+  const confTeams = Object.values(g.teams).filter((t) => t.conf === team.conf || t.history.some((h) => h.conf === team.conf));
   const rows = useMemo(() => {
     const seasons = new Set<number>();
-    for (const t of confTeams) for (const h of t.history) seasons.add(h.season);
+    for (const t of confTeams) for (const h of t.history) if ((h.conf ?? t.conf) === team.conf) seasons.add(h.season);
     return [...seasons].sort((a, b) => b - a).slice(0, 8).map((s) => ({
       s,
-      reg: confTeams.find((t) => t.history.some((h) => h.season === s && h.confChamp)),
-      tour: confTeams.find((t) => t.history.some((h) => h.season === s && h.confTourneyChamp)),
+      reg: confTeams.find((t) => inConf(t, s) && t.history.some((h) => h.season === s && h.confChamp)),
+      tour: confTeams.find((t) => inConf(t, s) && t.history.some((h) => h.season === s && h.confTourneyChamp)),
     }));
   }, [g.season, team.conf]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!rows.length) return null;

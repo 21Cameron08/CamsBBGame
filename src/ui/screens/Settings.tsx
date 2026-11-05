@@ -7,6 +7,8 @@ import { saveUploadedLogo, removeUploadedLogo, uploadedLogoIds, fileToDataUrl, L
 import { TEAMS } from '../../data/teams';
 import type { GameState, Team } from '../../engine/types';
 import { teamAccent } from '../color';
+import { REALIGN_INFO } from '../../engine/realignment';
+import type { RealignMode } from '../../engine/types';
 
 type Tab = 'saves' | 'prefs' | 'logos' | 'editor';
 
@@ -114,6 +116,10 @@ function Prefs() {
         <div className="row" style={{ padding: '12px 0' }}>
           <div style={{ flex: 1 }}><div className="b">Difficulty</div><div className="tiny muted">Set when the dynasty was created.</div></div>
           <span className="pill accent upper">{g.settings.difficulty}</span>
+        </div>
+        <div className="row" style={{ padding: '12px 0', gap: 12, borderTop: '1px solid var(--line)' }}>
+          <div style={{ flex: 1 }}><div className="b">Conference realignment</div><div className="tiny muted">{REALIGN_INFO[g.settings.realignment ?? 'off'].desc} Changes apply from the next offseason.</div></div>
+          <div className="seg">{(['off', 'realistic', 'chaos'] as RealignMode[]).map((m) => <button key={m} className={(g.settings.realignment ?? 'off') === m ? 'on' : ''} onClick={() => mutate((gg) => { gg.settings.realignment = m; })}>{REALIGN_INFO[m].label}</button>)}</div>
         </div>
       </Section>
       <Section title="Audio & Visual">

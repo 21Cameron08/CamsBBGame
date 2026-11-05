@@ -73,6 +73,16 @@ Production build: `npm run build`, then `npm run preview` (or host the `dist/` f
   - and the rest.
 - Each school has real colors, arena, location, prestige, NIL market, academics and facilities. **About 100 real rivalries** get special billing.
 - All players, coaches and media members are **fictional** and procedurally generated.
+- **Conference realignment** (a setting chosen with difficulty when you start a dynasty; change it later in Settings → Preferences):
+  - **Off**: conferences stay exactly as they are
+  - **Realistic**: every few years a wave hits. Conferences invite strong programs from the tier below (within reach of their footprint), a power program occasionally jumps to a richer league, and leagues that lose members backfill from below.
+  - **Chaos**: superconferences of up to 20, power programs jumping ship, and a shake-up almost every year
+  - moves are announced when the season ends (news, the Standings tracker, the radio show, the press) and take effect before the next Scheduling Office opens
+  - if **your school is invited**, your AD asks you to accept or decline. If you don't answer, the AD accepts. Moving up means a bigger NIL pool and prestige; your old conference rivals take it personally.
+  - your first season in a new league opens with a "Welcome to the ..." moment and a media-day question. Newcomers get a NEW badge in the standings.
+  - each season's conference is saved in team histories, so past conference champions stay correct
+  - the Ivy, SWAC and MEAC stay out of it. Small leagues get extra non-conference games so everyone plays a full schedule.
+  - older saves start with realignment off
 
 ### 🏀 The game engine
 - A **possession-by-possession simulation**, tuned to real D-I averages: about 72 PPG, about 35% from three, about 67 possessions per game, realistic upset rates.
@@ -346,6 +356,7 @@ src/
     pstats.ts      program and coach stats: per-season tracking, retired/fired coaches, head-to-head, summaries and scores
     rivalry.ts     Rivalries 2.0: heat, series, trophies, born/faded rivalries, rivalry week
     awards.ts      season awards, Awards Night show data, Hall of Fame inductions
+    realignment.ts conference realignment: waves of moves, invitations, backfill, applying moves
     events.ts / media.ts   story events, news & social
     staff.ts       coaching staff: market, effects, contracts, poaching, coaching tree
     scheduling.ts  Scheduling Office: Feast Week events, booking rules, guarantees, series, résumé meter
