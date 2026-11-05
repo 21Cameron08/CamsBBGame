@@ -123,6 +123,7 @@ export function createWorld(opts: NewGameOptions): GameState {
     state.coaches[coach.id] = coach;
     team.coachId = coach.id;
   }
+  state.prestigeScale = Object.values(state.teams).map((t) => t.prestige).sort((a, b) => b - a);
 
   // user coach
   const uteam = state.teams[opts.teamId];

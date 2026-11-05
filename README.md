@@ -72,6 +72,7 @@ Production build: `npm run build`, then `npm run preview` (or host the `dist/` f
   - the MAAC renamed the Metro
   - and the rest.
 - Each school has real colors, arena, location, prestige, NIL market, academics and facilities. **About 100 real rivalries** get special billing.
+- **Prestige moves, the league doesn't inflate.** Every season, programs are ranked by rating plus their NCAA run, and each one's prestige drifts toward the prestige that rank held when the dynasty began. A low-major that keeps winning climbs and a blue blood that slumps slides, but the league keeps the spread it started with. Older saves whose prestige already drifted up ease back down gradually, losing about a tenth of the excess each season.
 - All players, coaches and media members are **fictional** and procedurally generated.
 - **Conference realignment** (a setting chosen with difficulty when you start a dynasty; change it later in Settings → Preferences):
   - **Off**: conferences stay exactly as they are

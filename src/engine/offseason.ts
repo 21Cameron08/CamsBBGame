@@ -27,8 +27,33 @@ import { finalizeProgramSeason, coachExit, recordClassRanks } from './pstats';
 import { rivalrySeasonEnd, rivalryCoachMove } from './rivalry';
 import { planRealignment, applyRealignment } from './realignment';
 import { seasonDonations, openFacilities, programBuild, aiFacilities } from './facilities';
+import { TEAMS } from '../data/teams';
 
 const NCAA_BONUS: Record<string, number> = { Champion: 30, 'Runner-up': 22, 'Final Four': 18, 'Elite Eight': 12, 'Sweet 16': 8, 'Round of 32': 4, 'Round of 64': 1, 'First Four': 0.5 };
+
+/** the league's prestige scale (best first). Older saves rebuild it from the school data. */
+export function prestigeScale(state: GameState): number[] {
+  if (state.prestigeScale?.length) return state.prestigeScale;
+  const def = new Map(TEAMS.map((d) => [d.id, d.prestige]));
+  return (state.prestigeScale = Object.values(state.teams).map((t) => def.get(t.id) ?? t.prestige).sort((a, b) => b - a));
+}
+
+/**
+ * What each program's season was worth in prestige. Programs are ranked by rating plus their NCAA
+ * run, and the No. N season earns the No. N prestige on the league's scale. Prestige then shifts
+ * between programs (a low-major that wins climbs, a blue blood that slumps slides) while the
+ * league as a whole keeps the spread it started with instead of drifting upward.
+ */
+export function seasonPerformance(state: GameState, results: Record<string, string>): Record<string, number> {
+  const scale = prestigeScale(state);
+  const ranked = Object.values(state.teams)
+    .map((t) => ({ t, score: t.rating * 1.6 + (NCAA_BONUS[results[t.id]] ?? 0) }))
+    .sort((a, b) => b.score - a.score || b.t.prestige - a.t.prestige);
+  const out: Record<string, number> = {};
+  const last = Math.max(1, ranked.length - 1);
+  ranked.forEach(({ t }, i) => { out[t.id] = scale[Math.round((i * (scale.length - 1)) / last)]; });
+  return out;
+}
 
 /** Season awards (see ./awards.ts); kept for callers that only want the list */
 export function computeAwards(state: GameState): Award[] {
@@ -67,8 +92,10 @@ export function beginSeasonEnd(state: GameState) {
     if (st[0]) confChamps[c.id] = st[0].id;
     st.forEach((t, i) => (confFinish[t.id] = i + 1));
   }
+  const results = Object.fromEntries(Object.values(state.teams).map((t) => [t.id, ncaaResult(state, t.id)]));
+  const perfOf = seasonPerformance(state, results);
   for (const t of Object.values(state.teams)) {
-    const res = ncaaResult(state, t.id);
+    const res = results[t.id];
     const h: TeamSeasonHistory = {
       season: state.season, w: t.record.w, l: t.record.l, cw: t.record.cw, cl: t.record.cl,
       confFinish: confFinish[t.id] ?? 0, confChamp: confChamps[t.conf] === t.id,
@@ -76,8 +103,7 @@ export function beginSeasonEnd(state: GameState) {
       ncaaSeed: state.ncaa?.seeds[t.id] ?? null, postseason: res, apFinal: t.apRank, coachId: t.coachId, rating: t.rating, conf: t.conf,
     };
     t.history.push(h);
-    const perf = clamp(50 + t.rating * 1.6 + (NCAA_BONUS[res] ?? 0), 0, 100);
-    t.prestige = Math.round(clamp(t.prestige + (perf - t.prestige) * 0.1, 1, 99) * 10) / 10;
+    t.prestige = Math.round(clamp(t.prestige + (perfOf[t.id] - t.prestige) * 0.1, 1, 99) * 10) / 10;
     const c = state.coaches[t.coachId];
     if (c) c.career.push({ season: state.season, teamId: t.id, w: t.record.w, l: t.record.l, cw: t.record.cw, cl: t.record.cl, postseason: res, seed: h.ncaaSeed });
   }

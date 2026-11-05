@@ -719,6 +719,9 @@ export interface GameState {
   staff?: StaffState;
   /** jerseys retired during the dynasty (created on first use) */
   legacy?: { retired: Record<string, RetiredJersey[]> };
+  /** the league's prestige scale, best first: every program's prestige when the dynasty began
+   *  (older saves: rebuilt from the school data on first use). Season results are ranked onto it. */
+  prestigeScale?: number[];
   /** the facilities arms race: every program's starting rating and prestige, and recent construction */
   facRace?: { base: Record<string, number>; prestige?: Record<string, number>; log: FacRaceEntry[] };
   /** program building: facilities, boosters and the program fund, per school you've coached */
