@@ -728,6 +728,8 @@ export interface GameState {
   staff?: StaffState;
   /** jerseys retired during the dynasty (created on first use) */
   legacy?: { retired: Record<string, RetiredJersey[]> };
+  /** online league: every human coach and his per-coach state (single player: absent) */
+  league?: import('./league').LeagueState;
   /** pro careers of every drafted player (older saves rebuild from the draft history) */
   pros?: ProState;
   /** your locker room: chemistry, captains and what's happened (created on first use) */

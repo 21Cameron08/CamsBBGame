@@ -9,6 +9,7 @@ import type { Booster, BoosterStyle, FacRaceEntry, FacilityKey, FacilityProject,
 import type { StaffEffects } from './staff';
 import { FIRST_NAMES, LAST_NAMES } from '../data/names';
 import { addNews } from './media';
+import { asTeam, forEachHuman, humanTeamIds, isHuman } from './league';
 
 export const FACILITY_KEYS: FacilityKey[] = ['practice', 'arena', 'medical', 'lounge', 'film', 'recruiting', 'academic'];
 export const MAX_LEVEL = 5;
@@ -107,7 +108,7 @@ export function applyFacilities(state: GameState, e: StaffEffects) {
 }
 /** extra home-crowd energy from arena upgrades (user's home games) */
 export function facilityCrowd(state: GameState, homeId: string): number {
-  if (homeId !== state.user.teamId) return 0;
+  if (!isHuman(state, homeId)) return 0;
   return 0.03 * bonus(state.build?.[homeId], 'arena');
 }
 /** upgrades to the Academic Center (fewer eligibility scares) */
@@ -116,7 +117,7 @@ export function academicUpgrades(state: GameState): number {
 }
 /** academic appeal for recruits (user's program) */
 export function academicBonus(state: GameState, teamId: string): number {
-  if (teamId !== state.user.teamId) return 0;
+  if (!isHuman(state, teamId)) return 0;
   return 3 * bonus(state.build?.[teamId], 'academic');
 }
 /** the school's facilities rating (used by recruiting and the portal) follows your upgrades */
@@ -146,6 +147,9 @@ function credit(pb: ProgramBuild, season: number, label: string, amount: number)
 
 /** End of season: boosters react to the year, then the checks come in */
 export function seasonDonations(state: GameState) {
+  forEachHuman(state, () => humanDonations(state));
+}
+function humanDonations(state: GameState) {
   const uid = state.user.teamId;
   const pb = programBuild(state, uid);
   const t = state.teams[uid];
@@ -225,11 +229,11 @@ export function openFacilities(state: GameState) {
     pb.opened = { season: state.season, keys: done.map((p) => p.key) };
     for (const p of done) {
       pb.levels[p.key] = Math.max(pb.levels[p.key], p.level);
-      if (pb.teamId === state.user.teamId) {
+      if (isHuman(state, pb.teamId)) asTeam(state, pb.teamId, () => {
         const name = pb.names[p.key] ?? FACILITIES[p.key].name;
         state.user.moments.push({ kind: 'facility', teamId: pb.teamId, key: p.key, level: p.level, name });
         addNews(state, { kind: 'user', headline: `Ribbon cutting: ${state.teams[pb.teamId].school} opens its level ${p.level} ${name}`, body: FACILITIES[p.key].desc, teams: [pb.teamId], important: true });
-      }
+      });
     }
     syncRating(state, pb);
   }
@@ -376,7 +380,7 @@ export function aiFacilities(state: GameState) {
   // prestige moves relative to the league: a program that rose faster than everyone else aims higher
   const avgShift = teams.reduce((s, t) => s + shift(t), 0) / Math.max(1, teams.length);
   for (const t of teams) {
-    if (t.id === uid) continue;
+    if (isHuman(state, t.id)) continue;
     t.facilities = clamp(Math.round((t.facilities - AGING) * 100) / 100, 1, 10);
     const target = clamp(R.base[t.id] + (shift(t) - avgShift) * 0.09, 1, 10);
     const recent = t.history.slice(-3);
@@ -391,8 +395,10 @@ export function aiFacilities(state: GameState) {
     built.push({ season: state.season, teamId: t.id, key, cost: upgradeCost(key, level, t.prestige), rating: t.facilities });
   }
   // your buildings age too; your upgrades still count in full
-  const pb = state.build?.[uid];
+  for (const hid of humanTeamIds(state)) {
+  const pb = state.build?.[hid];
   if (pb) { pb.baseRating = clamp(Math.round((pb.baseRating - AGING) * 100) / 100, 1, 10); syncRating(state, pb); }
+  }
   R.log = [...built.sort((a, b) => b.cost - a.cost), ...R.log].slice(0, 80);
   if (!built.length) return;
   const user = state.teams[uid];

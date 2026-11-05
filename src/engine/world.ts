@@ -23,6 +23,7 @@ import { pstatsState } from './pstats';
 import { ensureRivalries } from './rivalry';
 import { ensureBuild } from './facilities';
 import { chemistryNewSeason } from './chemistry';
+import { blankCoachData, ensureLeague, isHuman, withHuman } from './league';
 
 export const START_SEASON = 2026;
 export const SAVE_VERSION = 2;
@@ -186,4 +187,46 @@ export function createWorld(opts: NewGameOptions): GameState {
   chemistryNewSeason(state);
   airEpisode(state, 'preview', { debut: true });
   return state;
+}
+
+/**
+ * Online leagues: put another human coach in charge of a school. He gets his own Office, staff,
+ * recruiting board, locker room and introductory press conference, exactly like a new dynasty.
+ */
+export function addHumanCoach(state: GameState, teamId: string, c: NewGameOptions['coach']): string {
+  const team = state.teams[teamId];
+  if (!team) throw new Error(`Unknown team ${teamId}`);
+  if (isHuman(state, teamId)) throw new Error(`${team.school} already has a human coach`);
+  const L = ensureLeague(state);
+  const displaced = state.coaches[team.coachId];
+  if (displaced) delete state.coaches[displaced.id];
+  const skills = blankSkills();
+  for (const [k, v] of Object.entries(ARCHETYPE_INFO[c.archetype].skills)) skills[k as keyof typeof skills] += v as number;
+  const diffRep = state.settings.difficulty === 'rookie' ? 10 : state.settings.difficulty === 'legend' ? -10 : 0;
+  const coach: Coach = {
+    id: rng.id('c'), first: c.first, last: c.last, age: c.age, face: c.face,
+    teamId, isUser: true, archetype: c.archetype, rating: 50, skills, xp: 0, level: 1, skillPoints: 2,
+    reputation: clamp(Math.max(30, team.prestige * 0.7) + diffRep, 10, 90), salary: Math.round((200000 + Math.exp(team.prestige * 0.05) * 30000) / 10000) * 10000,
+    contractYears: 5, jobSecurity: 70, mediaRep: 55, almaMater: c.almaMater, hometown: c.hometown,
+    career: [], trophies: [], careerW: 0, careerL: 0,
+  };
+  state.coaches[coach.id] = coach;
+  team.coachId = coach.id;
+  L.humans.push({ coachId: coach.id, name: `${c.first} ${c.last}`, data: blankCoachData(teamId, coach.id) });
+  withHuman(state, coach.id, () => {
+    seedUserBoard(state);
+    setExpectations(state);
+    initStaff(state, { vacantGM: true });
+    state.user.hoursMax = hoursForWeek(state);
+    state.user.hours = state.user.hoursMax;
+    addNews(state, { kind: 'coach', headline: `${team.school} names ${coach.first} ${coach.last} head coach`, body: `${team.school} has hired ${coach.first} ${coach.last} to lead the ${team.mascot}.`, teams: [teamId], important: true, personId: coach.id, personKind: 'coach' });
+    staffWelcomeInbox(state);
+    welcomeInbox(state);
+    ensureDevelopment(state);
+    ensureBuild(state);
+    chemistryNewSeason(state);
+    state.user.press = introPresser(state);
+    airEpisode(state, 'preview', { debut: true });
+  });
+  return coach.id;
 }

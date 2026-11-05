@@ -8,6 +8,7 @@ import { practiceMods } from './development';
 import { chooseSchemes, playbookState } from './schemes';
 import { retiredNumbers } from './legacy';
 import { chemEdge } from './chemistry';
+import { asTeam, isHuman } from './league';
 
 export const ROSTER_MAX = 15;
 export const ROSTER_MIN = 12;
@@ -87,7 +88,7 @@ export function simSetup(state: GameState, team: Team): SimTeamSetup {
     coachMotivation: coach ? coach.skills.motivation : 5,
     chem: chemEdge(team.chem),
   };
-  if (team.id !== state.user.teamId) return base;
+  if (team.id !== state.user.teamId) return isHuman(state, team.id) ? asTeam(state, team.id, () => simSetup(state, team)) : base;
   const pb = playbookState(state);
   base.fam = { off: pb.off, def: pb.def };
   const pm = practiceMods(state);

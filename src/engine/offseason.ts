@@ -29,6 +29,7 @@ import { planRealignment, applyRealignment } from './realignment';
 import { seasonDonations, openFacilities, programBuild, aiFacilities } from './facilities';
 import { TEAMS } from '../data/teams';
 import { chemistryNewSeason, chemistrySeasonEnd } from './chemistry';
+import { asTeam, forEachHuman, humanTeamIds, isHuman } from './league';
 import { addPro, ensurePros, proSeason } from './pros';
 
 const NCAA_BONUS: Record<string, number> = { Champion: 30, 'Runner-up': 22, 'Final Four': 18, 'Elite Eight': 12, 'Sweet 16': 8, 'Round of 32': 4, 'Round of 64': 1, 'First Four': 0.5 };
@@ -119,7 +120,28 @@ export function beginSeasonEnd(state: GameState) {
   ensurePros(state, state.season - 1);
   proSeason(state, state.season);
 
-  // user evaluation
+  // each human's season review: goals, job security, trophies, the contract
+  const reviews = new Map<string, Review>();
+  forEachHuman(state, (_t, cid) => { reviews.set(cid, userEvaluation(state, awards)); });
+
+  // program stats for the season, before the carousel moves coaches around
+  finalizeProgramSeason(state);
+  rivalrySeasonEnd(state);
+  planRealignment(state);
+  seasonDonations(state);
+  aiFacilities(state);
+  // coaching carousel
+  const carousel = runCarousel(state);
+  state.offseason = { graduating: [], declared: [], progression: {}, signed: [], carousel, summary: '', achieved: 0, securityDelta: 0 };
+  forEachHuman(state, (_t, cid) => userSeasonWrap(state, reviews.get(cid)!, awards, show));
+}
+
+interface Review { fired: boolean; notRenewed: boolean; achieved: number; secDelta: number; summary: string; seasonsAtSchool: number }
+
+/** the current coach's season review (before the carousel) */
+function userEvaluation(state: GameState, awards: Award[]): Review {
+  const user = state.teams[state.user.teamId];
+  const coach = state.coaches[state.user.coachId];
   const uh = user.history[user.history.length - 1];
   const confSize = state.conferences.find((c) => c.id === user.conf) ? confStandings(state, user.conf).length : 10;
   const achieved = achievedLevel(state, user, uh.confFinish, confSize, uh.confChamp || uh.confTourneyChamp, uh.postseason);
@@ -163,21 +185,22 @@ export function beginSeasonEnd(state: GameState) {
   }
   const summary = `${user.school} finished ${user.record.w}-${user.record.l} (${user.record.cw}-${user.record.cl} conf, ${ordinal(uh.confFinish)} place)${uh.postseason ? ` — ${uh.postseason}` : ''}${uh.ncaaSeed ? ` as a No. ${uh.ncaaSeed} seed` : ''}. Goal: ${state.user.expectation}.`;
 
-  // program stats for the season, before the carousel moves coaches around
-  finalizeProgramSeason(state);
-  rivalrySeasonEnd(state);
-  planRealignment(state);
-  seasonDonations(state);
-  aiFacilities(state);
-  // coaching carousel
-  const carousel = runCarousel(state);
+  return { fired, notRenewed, achieved, secDelta, summary, seasonsAtSchool };
+}
+
+/** the current coach's end of season (after the carousel): offers, the presser, Awards Night */
+function userSeasonWrap(state: GameState, r: Review, awards: Award[], show: ReturnType<typeof runAwards>['show']) {
+  const user = state.teams[state.user.teamId];
+  const coach = state.coaches[state.user.coachId];
+  const { fired, notRenewed, achieved, summary, seasonsAtSchool } = r;
+  const secDelta = r.secDelta;
   state.user.fired = fired;
   state.user.offers = jobOffers(state, fired);
   if (fired) {
     state.user.moments.push({ kind: 'fired' });
     addNews(state, { kind: 'coach', headline: notRenewed ? `${user.school} won't renew ${coach.first} ${coach.last}'s contract` : `${user.school} parts ways with ${coach.first} ${coach.last}`, body: notRenewed ? `${coach.first} ${coach.last}'s contract is up after ${seasonsAtSchool} season${seasonsAtSchool > 1 ? 's' : ''}, and ${user.school} has decided to go in a different direction.` : `After ${seasonsAtSchool} season${seasonsAtSchool > 1 ? 's' : ''}, ${user.school} has fired head coach ${coach.first} ${coach.last}. The search begins immediately.`, teams: [user.id], important: true, personId: coach.id, personKind: 'coach' });
   }
-  state.offseason = { graduating: [], declared: [], progression: {}, signed: [], carousel, summary, achieved, securityDelta: secDelta };
+  Object.assign(state.offseason!, { summary, achieved, securityDelta: secDelta });
   staffSeasonEnd(state);
   evaluateGoals(state, achieved);
   pressSeasonEnd(state, achieved);
@@ -203,7 +226,7 @@ function runCarousel(state: GameState): string[] {
   const lines: string[] = [];
   const vacancies: Team[] = [];
   for (const t of Object.values(state.teams)) {
-    if (t.id === state.user.teamId) continue;
+    if (isHuman(state, t.id)) continue;
     const c = state.coaches[t.coachId];
     if (!c) { vacancies.push(t); continue; }
     c.age++;
@@ -227,7 +250,7 @@ function runCarousel(state: GameState): string[] {
   // fill vacancies: best performers from lower programs move up
   vacancies.sort((a, b) => b.prestige - a.prestige);
   for (const t of vacancies) {
-    if (t.id === state.user.teamId) continue;
+    if (isHuman(state, t.id)) continue;
     maybePoachStaff(state, t.id);
     const candidates = Object.values(state.coaches).filter((c) => c.teamId && !c.isUser && state.teams[c.teamId].prestige < t.prestige - 8 && c.reputation >= t.prestige * 0.75);
     let hire: Coach | undefined;
@@ -252,7 +275,7 @@ function runCarousel(state: GameState): string[] {
   }
   // fill any team still lacking coach
   for (const t of Object.values(state.teams)) {
-    if (!t.coachId && t.id !== state.user.teamId) {
+    if (!t.coachId && !isHuman(state, t.id)) {
       const c = genAICoach(t.prestige, t.id);
       state.coaches[c.id] = c;
       t.coachId = c.id;
@@ -382,14 +405,14 @@ export function doSigning(state: GameState) {
     if (!r.committed) { delete state.recruits[r.id]; continue; }
     const t = state.teams[r.committed];
     // AI programs drop overflow commits; the user's signees always make it (the roster trim below makes room)
-    if (!t || (roomFor(t.id) <= 0 && t.id !== state.user.teamId)) { delete state.recruits[r.id]; continue; }
+    if (!t || (roomFor(t.id) <= 0 && !isHuman(state, t.id))) { delete state.recruits[r.id]; continue; }
     const p = recruitToPlayer(r, t.id);
     const s = r.schools.find((x) => x.teamId === t.id);
     p.nil = { amount: s?.nilOffer ?? roundMoney(nilValue(p, t.market) * 0.6), years: 2 };
     p.history.push(`Signed with ${t.school} (Class of ${r.classYear}, No. ${r.rank} overall)`);
     state.players[p.id] = p;
     t.roster.push(p.id);
-    if (t.id === state.user.teamId) os.signed.push(p.id);
+    if (isHuman(state, t.id)) asTeam(state, t.id, () => { state.offseason!.signed.push(p.id); });
     delete state.recruits[r.id];
   }
   // fill & trim rosters
@@ -404,8 +427,8 @@ export function doSigning(state: GameState) {
     }
     const all = teamPlayers(state, t.id);
     if (all.length > ROSTER_MAX) {
-      const isUser = t.id === state.user.teamId;
-      const keep = new Set(isUser ? os.signed : []);
+      const isUser = isHuman(state, t.id);
+      const keep = new Set(isUser ? asTeam(state, t.id, () => [...state.offseason!.signed]) : []);
       const cut = all.filter((p) => !keep.has(p.id)).sort((a, b) => a.ovr - b.ovr).slice(0, all.length - ROSTER_MAX);
       if (isUser && cut.length) addNews(state, { kind: 'user', headline: `Roster crunch: ${t.school} releases ${cut.map((p) => `${p.first} ${p.last}`).join(', ')}`, body: `With the signing class arriving and only ${ROSTER_MAX} scholarships, ${t.school} let ${cut.length > 1 ? 'its lowest-rated players' : 'its lowest-rated player'} go to make room.`, teams: [t.id], important: true });
       for (const p of cut) { removeFromTeam(state, p, 'Released'); delete state.players[p.id]; }
@@ -434,10 +457,10 @@ export function doDraft(state: GameState) {
     if (teamId) {
       const t = state.teams[teamId];
       if (t) t.prestige = clamp(t.prestige + (pickNo <= 14 ? 0.8 : pickNo <= 30 ? 0.4 : 0.15), 1, 99);
-      if (teamId === state.user.teamId) {
+      if (isHuman(state, teamId)) asTeam(state, teamId, () => {
         gainXp(state, pickNo <= 14 ? 120 : pickNo <= 30 ? 70 : 30);
         state.coaches[state.user.coachId].reputation = clamp(state.coaches[state.user.coachId].reputation + (pickNo <= 30 ? 2 : 1), 0, 100);
-      }
+      });
     }
     if (pickNo <= 5 || teamId === state.user.teamId) {
       addNews(state, { kind: 'draft', headline: `${order[(pickNo - 1) % 30]} select ${p.first} ${p.last} at No. ${pickNo}`, body: `${p.first} ${p.last} (${state.teams[teamId]?.school ?? 'college'}) goes ${pickNo <= 30 ? 'in the first round' : 'in the second round'} of the NBA Draft.`, teams: teamId ? [teamId] : [], important: teamId === state.user.teamId, personId: p.id, personKind: 'player' });
@@ -454,13 +477,13 @@ export function doProgression(state: GameState) {
   const os = state.offseason!;
   for (const t of Object.values(state.teams)) {
     const coach = state.coaches[t.coachId];
-    const dev = (coach ? coach.skills.development : 4) + (t.id === state.user.teamId ? staffEffects(state).dev : 0);
+    const dev = (coach ? coach.skills.development : 4) + (isHuman(state, t.id) ? asTeam(state, t.id, () => staffEffects(state).dev) : 0);
     for (const p of teamPlayers(state, t.id)) {
       const share = p.stats.gp ? p.stats.min / Math.max(1, p.stats.gp) / 30 : 0.2;
       const isNewcomer = p.career.length === 0 && p.cls === 'FR' && p.stats.gp === 0;
       const d = isNewcomer ? 0 : developPlayer(p, dev, share);
       if (!isNewcomer) advanceClass(p);
-      if (t.id === state.user.teamId) os.progression[p.id] = d;
+      if (isHuman(state, t.id)) os.progression[p.id] = d;
     }
   }
 }
@@ -482,25 +505,23 @@ export function newSeason(state: GameState) {
   state.news = state.news.slice(0, 150);
   state.social = state.social.slice(0, 100);
   jerseyNights(state);
-  state.inbox = state.inbox.filter((i) => !i.resolved).slice(0, 10);
   for (const c of Object.values(state.coaches)) if (!c.isUser) c.contractYears = Math.max(0, c.contractYears - 1);
-  const ucoach = state.coaches[state.user.coachId];
-  ucoach.age++;
+  forEachHuman(state, () => { state.coaches[state.user.coachId].age++; });
   for (const t of Object.values(state.teams)) {
     t.record = emptyRecord();
     t.apRank = null; t.prevApRank = null; t.pollScore = 0; t.srs = 0; t.wab = 0;
     t.coachChange = false;
     const conf = state.conferences.find((c) => c.id === t.conf);
     const coach = state.coaches[t.coachId];
-    t.nilBudget = Math.round(nilBudgetFor(t, conf, t.hype) * (1 + (coach?.skills.nil ?? 3) * 0.03) * (t.id === state.user.teamId ? staffEffects(state).nilMul : 1));
+    t.nilBudget = Math.round(nilBudgetFor(t, conf, t.hype) * (1 + (coach?.skills.nil ?? 3) * 0.03) * (isHuman(state, t.id) ? asTeam(state, t.id, () => staffEffects(state).nilMul) : 1));
     t.hype = clamp(t.hype * 0.7 + 15, 5, 100);
     for (const p of teamPlayers(state, t.id)) {
       p.stats = emptyStats();
       p.starts = 0;
       p.draftStock = undefined;
-      if (p.nil) { p.nil.years--; if (p.nil.years <= 0) p.nil = t.id === state.user.teamId ? null : p.nil; }
+      if (p.nil) { p.nil.years--; if (p.nil.years <= 0) p.nil = isHuman(state, t.id) ? null : p.nil; }
     }
-    if (t.id !== state.user.teamId) {
+    if (!isHuman(state, t.id)) {
       allocateAiNil(state, t);
       t.strategy = autoStrategy(teamPlayers(state, t.id), coach);
     } else {
@@ -511,27 +532,32 @@ export function newSeason(state: GameState) {
   }
   state.offseason = null;
   openFacilities(state);
-  finalizePoaching(state);
-  staffNewSeason(state);
+  forEachHuman(state, () => { finalizePoaching(state); staffNewSeason(state); });
   state.schedule = generateSchedule(state);
   // new recruiting class
   for (const r of generateClass(state, state.season + 1)) state.recruits[r.id] = r;
   computeRatings(state);
-  applyScheduleEffects(state);
+  forEachHuman(state, () => applyScheduleEffects(state));
   seedInterest(state);
+  const ranks = runPoll(state, 'Preseason AP Poll');
+  addNews(state, { kind: 'rank', headline: `Preseason AP Poll: ${state.teams[ranks[0]].school} opens at No. 1`, body: `The ${seasonLabel(state.season)} season tips off soon. Top five: ${ranks.slice(0, 5).map((id, i) => `${i + 1}. ${state.teams[id].school}`).join(', ')}.`, teams: ranks.slice(0, 5), important: true });
+  chemistryNewSeason(state);
+  forEachHuman(state, () => humanNewSeason(state));
+}
+
+/** the current coach's new season: his Office, board, goals, practice, media day */
+function humanNewSeason(state: GameState) {
+  state.inbox = state.inbox.filter((i) => !i.resolved).slice(0, 10);
   state.user.board = [];
   seedUserBoard(state);
-  const ranks = runPoll(state, 'Preseason AP Poll');
   setExpectations(state);
   devNewSeason(state);
   seasonInstallReset(state);
   state.user.hoursMax = hoursForWeek(state);
   state.user.hours = state.user.hoursMax;
-  chemistryNewSeason(state);
   state.user.press = mediaDayPresser(state);
   const user = state.teams[state.user.teamId];
   const unsigned = teamPlayers(state, user.id).filter((p) => !p.nil);
-  addNews(state, { kind: 'rank', headline: `Preseason AP Poll: ${state.teams[ranks[0]].school} opens at No. 1`, body: `The ${seasonLabel(state.season)} season tips off soon. ${user.apRank ? `${user.school} is ranked No. ${user.apRank}.` : `${user.school} is unranked to start the year.`}`, teams: ranks.slice(0, 5), important: true });
   if (unsigned.length) {
     state.inbox.unshift({
       id: `nil${state.season}`, day: 0, season: state.season, from: 'Collective Director', fromRole: 'NIL Collective', resolved: false, priority: true,
@@ -551,9 +577,15 @@ export function advanceOffseason(state: GameState) {
     case 'declarations': openPortal(state); break;
     case 'portal': if (advancePortalDay(state) === 'closed') doSigning(state); break;
     case 'signing': doDraft(state); break;
-    case 'draft': beginSummer(state); break;
-    case 'progression': if (!summerDone(state)) runSummer(state); else { applyRealignment(state); openScheduling(state); } break;
-    case 'scheduling': lockScheduling(state); newSeason(state); break;
+    case 'draft': forEachHuman(state, () => beginSummer(state)); break;
+    case 'progression': {
+      let done = true;
+      forEachHuman(state, () => { if (!summerDone(state)) done = false; });
+      if (!done) { let first = true; forEachHuman(state, () => { runSummer(state, first); first = false; }); }
+      else { applyRealignment(state); forEachHuman(state, () => openScheduling(state)); }
+      break;
+    }
+    case 'scheduling': forEachHuman(state, () => { lockScheduling(state); }); newSeason(state); break;
     default: break;
   }
   radioOffseason(state, before);

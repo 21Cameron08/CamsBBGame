@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { BoxScore, GameState, ScheduledGame } from '../engine/types';
 import { createWorld, type NewGameOptions } from '../engine/world';
-import { processDay, nextDay, userGameToday, applyGameResult, simGame } from '../engine/season';
+import { processDay, nextDay, userGameToday, playGame } from '../engine/season';
 import { advanceOffseason, takeJob } from '../engine/offseason';
 import { GameSim } from '../engine/sim';
 import { simSetup } from '../engine/team';
@@ -211,7 +211,7 @@ export const useGame = create<Store>((set, get) => ({
     if (!live) return;
     get().mutate((g) => {
       const game = g.schedule.find((x) => x.id === live.game.id);
-      if (game && !game.played) applyGameResult(g, game, box);
+      if (game && !game.played) playGame(g, game, box);
     });
     set({ live: null });
   },
@@ -221,7 +221,7 @@ export const useGame = create<Store>((set, get) => ({
   quickSimUserGame() {
     get().mutate((g) => {
       const game = userGameToday(g);
-      if (game) applyGameResult(g, game, simGame(g, game));
+      if (game) playGame(g, game);
     });
     set({ modal: null });
   },
@@ -244,7 +244,7 @@ export const useGame = create<Store>((set, get) => ({
       const ug = userGameToday(g);
       if (ug && !ug.played) {
         if (!autoUser) break; // stop so the user can play (or quick-sim) their game
-        applyGameResult(g, ug, simGame(g, ug));
+        playGame(g, ug);
         g.user.press = null; // skip pressers during bulk sims
       }
       processDay(g);

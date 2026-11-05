@@ -7,6 +7,7 @@ import { teamPlayers, ROSTER_MAX, confTierOf } from './team';
 import { staffEffects } from './staff';
 import { academicBonus } from './facilities';
 import { nbaCount, pipelineBonus } from './pros';
+import { asTeam, isHuman } from './league';
 
 export const RECRUIT_ACTIONS = {
   text: { label: 'Text', hours: 1, pts: 2.5, desc: 'Quick check-in. Small relationship boost.' },
@@ -190,7 +191,7 @@ export function teamAppeal(state: GameState, r: Recruit, team: Team, nilOffer = 
     pt,
     prestige: clamp(team.prestige + tierBoost, 0, 100),
     proximity: clamp(100 - miles / 12, 0, 100),
-    coach: clamp((coach?.reputation ?? 50) * 0.8 + (coach ? coach.skills.recruiting * 2 : 10) + (team.id === state.user.teamId && state.staff && staffPipelineState(state) === r.state ? 12 : 0), 0, 100),
+    coach: clamp((coach?.reputation ?? 50) * 0.8 + (coach ? coach.skills.recruiting * 2 : 10) + (isHuman(state, team.id) && asTeam(state, team.id, () => !!state.staff && staffPipelineState(state) === r.state) ? 12 : 0), 0, 100),
     pro: clamp(team.prestige * 0.6 + (coach ? coach.skills.development * 4 : 20) + (team.facilities ?? 5) * 2 + pipelineBonus(state, team.id), 0, 100),
     academics: clamp(team.academics * 10 + academicBonus(state, team.id), 0, 100),
     winning: clamp(50 + team.rating * 2.2 + (team.record.w - team.record.l) * 1.5, 0, 100),
@@ -291,7 +292,7 @@ export function aiRecruitingWeek(state: GameState, week: number) {
     }
   }
   for (const team of Object.values(state.teams)) {
-    if (team.id === state.user.teamId && !state.settings.autoRecruit) continue;
+    if (isHuman(state, team.id) && !state.settings.autoRecruit) continue;
     const coach = state.coaches[team.coachId];
     const open = openSpots(state, team.id);
     const offers = offersBy.get(team.id) ?? [];

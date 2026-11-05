@@ -23,7 +23,8 @@ import { radioWeekly } from './radio';
 import { rivalryOf, rivalCrowd, rivalryResult, rivalryWeek, rivalryRecruit } from './rivalry';
 import { answerInvitation } from './realignment';
 import { facilityCrowd, boosterWeek, resolveBooster } from './facilities';
-import { chemistryWeek, logDecision, resolveLocker, roleOf, seniorNight } from './chemistry';
+import { chemistryWeek, lockerTick, logDecision, resolveLocker, roleOf, seniorNight } from './chemistry';
+import { asTeam, forEachHuman, humanCoachOf, humanTeamIds, isHuman, leagueOn, withHuman } from './league';
 
 export function isUserGame(state: GameState, g: ScheduledGame) {
   return g.home === state.user.teamId || g.away === state.user.teamId;
@@ -53,7 +54,8 @@ export function simGame(state: GameState, g: ScheduledGame): BoxScore {
   });
 }
 
-export function applyGameResult(state: GameState, g: ScheduledGame, box: BoxScore) {
+export interface PreGame { preApH: number | null; preApA: number | null; preSpread: number }
+export function applyGameResult(state: GameState, g: ScheduledGame, box: BoxScore): PreGame | undefined {
   if (g.played) return;
   box.gameId = g.id;
   g.played = true;
@@ -137,7 +139,17 @@ export function applyGameResult(state: GameState, g: ScheduledGame, box: BoxScor
   }
 
   // news
-  if (isUser) {
+  const pre: PreGame = { preApH, preApA, preSpread };
+  if (isUser) userGameEffects(state, g, box, pre);
+  else upsetNews(state, g);
+  return pre;
+}
+
+/** the human side of a game: recap, XP, job security, the presser and moments */
+export function userGameEffects(state: GameState, g: ScheduledGame, box: BoxScore, pre: PreGame) {
+  const { preApH, preApA, preSpread } = pre;
+  const homeWon = box.hs > box.as;
+  {
     gameRecapNews(state, g, box);
     userGameSocial(state, g, box);
     const user = state.teams[state.user.teamId];
@@ -165,8 +177,6 @@ export function applyGameResult(state: GameState, g: ScheduledGame, box: BoxScor
     state.user.moments.push({ kind: 'win', gameId: g.id, big: won && (!!oppRank || g.type === 'ncaa' || g.type === 'ctourn') });
     seniorNight(state, g);
     void opp;
-  } else {
-    upsetNews(state, g);
   }
 }
 
@@ -175,8 +185,7 @@ export function processDay(state: GameState, opts: { skipUser?: boolean } = {}) 
   const games = state.schedule.filter((g) => g.day === state.day && !g.played);
   for (const g of games) {
     if (opts.skipUser && isUserGame(state, g)) continue;
-    const box = simGame(state, g);
-    applyGameResult(state, g, box);
+    playGame(state, g);
   }
   if (games.length) {
     if (state.phase === 'confTourney' || state.phase === 'ncaa') {
@@ -187,6 +196,20 @@ export function processDay(state: GameState, opts: { skipUser?: boolean } = {}) 
   }
 }
 
+/** sim and record one game; a human team's game runs as that coach (his staff, playbook, postgame) */
+export function playGame(state: GameState, g: ScheduledGame, given?: BoxScore) {
+  const humans = leagueOn(state) ? [g.home, g.away].filter((t) => isHuman(state, t)) : [];
+  if (!humans.length) { applyGameResult(state, g, given ?? simGame(state, g)); return; }
+  // the current coach first if he's playing, so his postgame stays in front of him
+  humans.sort((a) => (a === state.user.teamId ? -1 : 1));
+  let box: BoxScore | undefined, pre: PreGame | undefined;
+  asTeam(state, humans[0], () => { box = given ?? simGame(state, g); pre = applyGameResult(state, g, box); });
+  if (humans[1] && box && pre) {
+    const c = humanCoachOf(state, humans[1]);
+    if (c) withHuman(state, c, () => userGameEffects(state, g, box!, pre!));
+  }
+}
+
 function tourneyNews(state: GameState) {
   // conference champions crowned today
   for (const b of Object.values(state.confTourneys)) {
@@ -194,12 +217,12 @@ function tourneyNews(state: GameState) {
     if (b.champion && final.gameId && state.schedule.find((g) => g.id === final.gameId)?.day === state.day) {
       const t = state.teams[b.champion];
       addNews(state, { kind: 'feature', headline: `${t.school} wins the ${b.name}, punches ticket to the Big Dance`, body: `${t.school} (${t.record.w}-${t.record.l}) claimed the ${b.name} title${final.score ? ` with a ${Math.max(...final.score)}-${Math.min(...final.score)} win in the final` : ''}, earning an automatic bid to the NCAA Tournament.`, teams: [t.id], important: t.id === state.user.teamId });
-      if (t.id === state.user.teamId) {
+      if (isHuman(state, t.id)) asTeam(state, t.id, () => {
         state.user.moments.push({ kind: 'title', label: `${b.name} Champions`, teamId: t.id });
         gainXp(state, 120);
         const c = state.coaches[state.user.coachId];
         c.trophies.push({ season: state.season, kind: 'ctourn', label: `${b.name} Champion`, teamId: t.id });
-      }
+      });
     }
   }
   if (state.ncaa && state.phase === 'ncaa') {
@@ -220,11 +243,10 @@ function tourneyNews(state: GameState) {
       const ru = state.teams[final.teams.find((x) => x !== ch.id)!];
       addNews(state, { kind: 'feature', headline: `${ch.school.toUpperCase()} ARE NATIONAL CHAMPIONS`, body: `${ch.school} cut down the nets after beating ${ru.school}${final.score ? ` ${Math.max(...final.score)}-${Math.min(...final.score)}` : ''} in the national championship game. One Shining Moment.`, teams: [ch.id, ru.id], important: true });
       state.champions.push({ season: state.season, teamId: ch.id, runnerUp: ru.id, score: final.score ? `${Math.max(...final.score)}-${Math.min(...final.score)}` : '' });
-      if (ch.id === state.user.teamId) state.user.moments.push({ kind: 'title', label: 'National Champions', teamId: ch.id });
+      if (isHuman(state, ch.id)) asTeam(state, ch.id, () => state.user.moments.push({ kind: 'title', label: 'National Champions', teamId: ch.id }));
     }
-    // user eliminated?
-    const userId = state.user.teamId;
-    for (const g of games) {
+    // humans eliminated?
+    for (const userId of humanTeamIds(state)) for (const g of games) {
       if (g.winner && g.teams.includes(userId) && g.winner !== userId) {
         addNews(state, { kind: 'user', headline: `${state.teams[userId].school}'s season ends in the ${roundName}`, body: `The run is over. ${state.teams[userId].school} finishes ${state.teams[userId].record.w}-${state.teams[userId].record.l} with a ${NCAA_EXIT_LABEL[roundIdx]} exit.`, teams: [userId], important: true });
       }
@@ -240,45 +262,59 @@ export function weeklyTick(state: GameState, week: number) {
     const ranks = runPoll(state, label);
     pollNews(state, label, ranks);
   }
-  // last week's practice: player development and installing the playbook
-  weeklyPractice(state);
-  if (state.day > 0 && ['regular', 'confTourney', 'ncaa'].includes(state.phase)) {
-    const uc = state.coaches[state.user.coachId];
-    weeklyInstall(state, { tactics: (uc?.skills.tactics ?? 5) + (state.staff ? staffEffects(state).tactics : 0), gamePrep: state.development?.practice === 'gameprep' });
-  }
-  // recruiting: decisions use the board exactly as the user left it this week,
-  // then rivals put in next week's work and the board refreshes.
+  // last week's practice: player development and installing the playbook (each human's own)
+  forEachHuman(state, () => {
+    weeklyPractice(state);
+    if (state.day > 0 && ['regular', 'confTourney', 'ncaa'].includes(state.phase)) {
+      const uc = state.coaches[state.user.coachId];
+      weeklyInstall(state, { tactics: (uc?.skills.tactics ?? 5) + (state.staff ? staffEffects(state).tactics : 0), gamePrep: state.development?.practice === 'gameprep' });
+    }
+  });
+  // recruiting: decisions use the boards exactly as the humans left them this week,
+  // then rivals put in next week's work and the boards refresh.
   const commits = decideRecruits(state, week);
   aiRecruitingWeek(state, week);
   refreshRecruitInterest(state);
   for (const r of commits) {
     commitNews(state, r, r.committed!);
     if (r.decision?.userStatus === 'lost' && r.stars >= 4 && r.committed) rivalryRecruit(state, r.committed, `${r.first} ${r.last}`, r.stars);
-    const userInvolved = r.schools.some((s) => s.teamId === state.user.teamId && s.offered);
-    if (userInvolved || r.committed === state.user.teamId) {
-      state.user.moments.push({ kind: 'commit', recruitId: r.id, teamId: r.committed!, others: [r.committed!, ...(userInvolved ? [state.user.teamId] : []), ...(r.decision?.odds.map((o) => o.teamId) ?? []), ...r.schools.map((s) => s.teamId)].filter((id, i, a) => a.indexOf(id) === i).slice(1, 4) });
-      if (r.committed === state.user.teamId) gainXp(state, 10 + r.stars * 6);
+  }
+  // morale drift and follower growth
+  for (const p of Object.values(state.players)) {
+    if (!p.teamId) continue;
+    p.morale = clamp(p.morale + (65 - p.morale) * 0.04, 0, 100);
+    if (p.stats.gp) p.followers = Math.round(p.followers * (1 + Math.min(0.04, (p.stats.pts / p.stats.gp) * 0.0012)));
+  }
+  if (rng.chance(0.7)) randomBuzz(state);
+  // chemistry for every team
+  chemistryWeek(state, week);
+  // each human's week: commits, hours, the Office, the locker room, boosters, the radio show
+  forEachHuman(state, () => humanWeek(state, week, commits));
+}
+
+/** the current coach's side of a week */
+function humanWeek(state: GameState, week: number, commits: ReturnType<typeof decideRecruits>) {
+  const uid = state.user.teamId;
+  for (const r of commits) {
+    const userInvolved = r.schools.some((s) => s.teamId === uid && s.offered);
+    if (userInvolved || r.committed === uid) {
+      state.user.moments.push({ kind: 'commit', recruitId: r.id, teamId: r.committed!, others: [r.committed!, ...(userInvolved ? [uid] : []), ...(r.decision?.odds.map((o) => o.teamId) ?? []), ...r.schools.map((s) => s.teamId)].filter((id, i, a) => a.indexOf(id) === i).slice(1, 4) });
+      if (r.committed === uid) gainXp(state, 10 + r.stars * 6);
     }
   }
   state.user.hoursMax = hoursForWeek(state);
   state.user.hours = state.user.hoursMax;
-  // events & buzz
   if (state.phase === 'regular' || state.phase === 'preseason') maybeWeeklyEvent(state);
-  if (rng.chance(0.7)) randomBuzz(state);
-  // morale drift and follower growth
+  // your staff lifts morale; unpaid players sulk
   const staffMorale = state.staff ? staffEffects(state).morale : 0;
-  for (const p of Object.values(state.players)) {
-    if (staffMorale && p.teamId === state.user.teamId) p.morale = clamp(p.morale + staffMorale, 0, 100);
-    if (!p.teamId) continue;
-    p.morale = clamp(p.morale + (65 - p.morale) * 0.04, 0, 100);
-    if (p.teamId === state.user.teamId && !p.nil && p.ovr >= 55) p.morale = clamp(p.morale - 2, 0, 100);
-    if (p.stats.gp) p.followers = Math.round(p.followers * (1 + Math.min(0.04, (p.stats.pts / p.stats.gp) * 0.0012)));
+  for (const id of state.teams[uid].roster) {
+    const p = state.players[id];
+    if (!p) continue;
+    if (staffMorale) p.morale = clamp(p.morale + staffMorale, 0, 100);
+    if (!p.nil && p.ovr >= 55) p.morale = clamp(p.morale - 2, 0, 100);
   }
-  // the locker room: chemistry for every team, and your captains, promises and dilemmas
-  chemistryWeek(state, week);
-  // a booster may come calling
+  lockerTick(state, week);
   boosterWeek(state);
-  // rivalry week headlines, then the weekly fan radio show
   if (state.phase === 'regular' || state.phase === 'confTourney') rivalryWeek(state);
   radioWeekly(state);
 }
@@ -306,7 +342,7 @@ export function nextDay(state: GameState) {
     const user = field.find((e) => e.teamId === state.user.teamId);
     const ones = field.filter((e) => e.seed === 1).map((e) => state.teams[e.teamId].school);
     // the Selection Sunday show plays first; its presser follows when the show ends
-    state.user.moments.push({ kind: 'selection', season: state.season, press: selectionPresser(state, field) });
+    forEachHuman(state, () => { state.user.moments.push({ kind: 'selection', season: state.season, press: selectionPresser(state, field) }); });
     addNews(state, { kind: 'bracket', headline: `The field of 68 is set — ${ones.join(', ')} earn No. 1 seeds`, body: `Selection Sunday delivered drama as the committee revealed the bracket. ${user ? `${state.teams[state.user.teamId].school} is in as a No. ${user.seed} seed in the ${['East', 'West', 'South', 'Midwest'][user.region]} Region.` : `${state.teams[state.user.teamId].school} was left out of the field.`}`, teams: field.slice(0, 4).map((e) => e.teamId), important: true });
   }
   if (week > prevWeek) weeklyTick(state, week);

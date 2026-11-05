@@ -13,6 +13,7 @@ import { milesBetween, PLACES } from '../data/places';
 import { seasonLabel } from './calendar';
 import { rivalryTransfer } from './rivalry';
 import { doorOpen, portalLockerMul } from './chemistry';
+import { asTeam, forEachHuman, humanTeamIds, isHuman } from './league';
 
 export const PORTAL_DAYS = 6;
 export const PORTAL_ACTIONS = {
@@ -22,7 +23,7 @@ export const PORTAL_ACTIONS = {
 } as const;
 export type PortalActionKey = keyof typeof PORTAL_ACTIONS;
 
-const isUser = (state: GameState, teamId: string) => teamId === state.user.teamId;
+const isUser = (state: GameState, teamId: string) => isHuman(state, teamId);
 
 function hash(s: string): number {
   let h = 2166136261;
@@ -158,7 +159,7 @@ export function openPortal(state: GameState) {
   }
   const ps: PortalState = { day: 0, maxDays: PORTAL_DAYS, entries: {}, feed: [], hours: 0, hoursMax: 0, calls: [] };
   state.portal = ps;
-  state.user.retention = {};
+  forEachHuman(state, () => { state.user.retention = {}; });
   const waves = [1, 2, 3, 4, 5];
   for (const p of Object.values(state.players)) {
     if (!p.teamId) continue;
@@ -190,12 +191,12 @@ export function openPortal(state: GameState) {
     if (doorOpen(state, p.id)) pr = 0.95; // you told him he was free to go
     const reason = reasonFor(state, p, team);
     if (isUser(state, team.id)) {
-      if (pr >= 0.2) {
+      if (pr >= 0.2) asTeam(state, team.id, () => {
         const ask = roundMoney(Math.max(playerValue(state, p) * rng.range(1.0, 1.35), (p.nil?.amount ?? 0) * 1.15) * staffEffects(state).retentionMul);
         const quote = rng.pick(RETENTION_QUOTES[reason])
           .replace('{mpg}', mpg.toFixed(1)).replace('{value}', fmtMoney(playerValue(state, p))).replace('{current}', fmtMoney(p.nil?.amount ?? 0));
         state.user.retention[p.id] = { ask, resolved: false, prob: pr, reason, quote };
-      }
+      });
       continue;
     }
     if (!rng.chance(pr)) continue;
@@ -205,8 +206,7 @@ export function openPortal(state: GameState) {
     p.inPortal = true;
   }
   rankEntries(state, ps);
-  ps.hoursMax = portalHoursMax(state);
-  ps.hours = ps.hoursMax;
+  forEachHuman(state, () => { ps.hoursMax = portalHoursMax(state); ps.hours = ps.hoursMax; });
   const n = Object.keys(state.user.retention).length;
   feed(ps, { kind: 'open', text: `The portal window opens soon. ${n ? `${n} of your players want to talk first.` : 'Your locker room is locked in — nobody asked for a meeting.'}`, big: true });
 }
@@ -272,7 +272,7 @@ export function teamScore(state: GameState, e: PortalEntry, teamId: string, offe
   const homeS = home ? clamp(100 - milesBetween(home[0], home[1], t.lat, t.lng) / 12, 0, 100) : 45;
   const coach = state.coaches[t.coachId];
   let coachS = (e.rel[teamId] ?? 0) + (coach ? coach.skills.portal * 3 + (coach.reputation - 50) * 0.3 : 0);
-  if (isUser(state, teamId)) coachS += staffEffects(state).portal * 2;
+  if (isUser(state, teamId)) coachS += asTeam(state, teamId, () => staffEffects(state).portal) * 2;
   coachS = clamp(coachS, 0, 110);
   let s = w.nil * nilS + w.pt * pt + w.win * winS + w.prestige * t.prestige + w.home * homeS + w.coach * coachS;
   if ((offer?.years ?? 1) >= 2) s += 2;
@@ -582,16 +582,16 @@ function commit(state: GameState, e: PortalEntry, o: PortalOffer) {
     feed(ps, { kind: 'commit', text: `${'★'.repeat(e.stars)} ${p.first} ${p.last} commits to ${t.school}${others.length ? ` over ${others.join(' and ')}` : ''}. (${fmtMoney(o.nil)} NIL)`, playerId: p.id, teamId: t.id, big: userWon || e.stars === 5 });
     addNews(state, { kind: 'portal', headline: `${p.first} ${p.last} commits to ${t.school} out of the portal`, body: `The ${p.pos} from ${fromSchool} chose ${t.school}${others.length ? ` over ${others.join(' and ')}` : ''}. NIL deal reportedly worth ${fmtMoney(o.nil)}.`, teams: [t.id], important: userWon, personId: p.id, personKind: 'player' });
   }
-  if (userWon) {
+  if (userWon) asTeam(state, t.id, () => {
     gainXp(state, 15 + Math.max(0, p.ovr - 60) + e.stars * 4);
     state.coaches[state.user.coachId].reputation = clamp(state.coaches[state.user.coachId].reputation + (e.stars >= 4 ? 1 : 0.3), 0, 100);
-  }
+  });
 }
 
 function processDecisions(state: GameState, final: boolean) {
   const ps = state.portal!;
-  const uid = state.user.teamId;
-  const results: { playerId: string; teamId: string; won: boolean }[] = [];
+  const humans = humanTeamIds(state);
+  const byHuman = new Map<string, { playerId: string; teamId: string; won: boolean }[]>(humans.map((h) => [h, []]));
   let quiet = 0;
   for (const e of visibleEntries(state).sort((a, b) => a.rank - b.rank)) {
     if (e.status !== 'available') continue;
@@ -612,14 +612,18 @@ function processDecisions(state: GameState, final: boolean) {
     let pick = odds[0];
     for (const o of odds) { acc += o.p; if (r <= acc) { pick = o; break; } }
     const offer = e.offers.find((o) => o.teamId === pick.teamId)!;
-    const involved = e.offers.some((o) => o.teamId === uid);
+    const involvedH = humans.filter((h) => e.offers.some((o) => o.teamId === h));
+    const involved = involvedH.length > 0;
     commit(state, e, offer);
-    if (involved) results.push({ playerId: e.id, teamId: pick.teamId, won: pick.teamId === uid });
+    for (const h of involvedH) byHuman.get(h)!.push({ playerId: e.id, teamId: pick.teamId, won: pick.teamId === h });
     if (e.stars < 4 && !involved) quiet++;
   }
   if (quiet) feed(ps, { kind: 'commit', text: `+ ${quiet} more portal commitments today.` });
-  ps.lastResults = results;
-  if (results.length) state.user.moments.push({ kind: 'portalDay', day: ps.day, results: results.slice(0, 8) });
+  for (const h of humans) asTeam(state, h, () => {
+    const results = byHuman.get(h) ?? [];
+    ps.lastResults = results;
+    if (results.length) state.user.moments.push({ kind: 'portalDay', day: ps.day, results: results.slice(0, 8) });
+  });
 }
 
 function grades(state: GameState) {
@@ -669,10 +673,9 @@ export function advancePortalDay(state: GameState): 'open' | 'closed' {
   revealDay(state);
   aiDay(state);
   releaseTopLists(state);
-  makeCalls(state);
+  forEachHuman(state, () => makeCalls(state));
   sortDayFeed(ps);
-  ps.hoursMax = portalHoursMax(state);
-  ps.hours = ps.hoursMax;
+  forEachHuman(state, () => { if (state.portal !== ps) return; ps.hoursMax = portalHoursMax(state); ps.hours = ps.hoursMax; });
   return 'open';
 }
 

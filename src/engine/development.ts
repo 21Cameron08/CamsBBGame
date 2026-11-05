@@ -8,6 +8,7 @@ import { teamPlayers } from './team';
 import { staffEffects } from './staff';
 import { addNews, addSocial } from './media';
 import { confStandings, selectionScore } from './rankings';
+import { isHuman } from './league';
 
 // ---------------- Plans ----------------
 export const FOCUS_INFO: Record<DevFocus, { label: string; icon: string; desc: string; keys: RatingKey[] }> = {
@@ -200,7 +201,7 @@ export function summerDone(state: GameState): boolean {
 }
 
 /** Run summer workouts for every program */
-export function runSummer(state: GameState) {
+export function runSummer(state: GameState, aiToo = true) {
   const os = state.offseason!;
   const dv = devState(state);
   const uid = state.user.teamId;
@@ -209,7 +210,8 @@ export function runSummer(state: GameState) {
   const rows: DevReportRow[] = [];
   for (const t of Object.values(state.teams)) {
     const coach = state.coaches[t.coachId];
-    if (t.id !== uid) {
+    if (!isHuman(state, t.id)) {
+      if (!aiToo) continue;
       const dev = coach ? coach.skills.development : 4;
       for (const p of teamPlayers(state, t.id)) {
         if (isNewcomer(p)) continue;
@@ -218,6 +220,7 @@ export function runSummer(state: GameState) {
       }
       continue;
     }
+    if (t.id !== uid) continue; // other humans run their own summer
     const dev = devSkillFor(state);
     for (const p of teamPlayers(state, t.id)) {
       const focus = planOf(state, p.id);

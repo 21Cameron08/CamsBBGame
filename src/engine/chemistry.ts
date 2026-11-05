@@ -8,6 +8,7 @@ import { teamPlayers } from './team';
 import { addNews } from './media';
 import { depthChart } from './sim';
 import { staffEffects } from './staff';
+import { asTeam, forEachHuman, isHuman } from './league';
 
 export const CHEM_NEUTRAL = 60;
 const BOOST_CAP = 15;
@@ -87,7 +88,7 @@ export function autoCaptains(state: GameState, team: Team): Player[] {
     .sort((a, b) => captainScore(b, team.id) - captainScore(a, team.id)).slice(0, 2);
 }
 export function captainsOf(state: GameState, team: Team): Player[] {
-  if (team.id !== state.user.teamId) return autoCaptains(state, team);
+  if (team.id !== state.user.teamId) return isHuman(state, team.id) ? asTeam(state, team.id, () => captainsOf(state, team)) : autoCaptains(state, team);
   const L = state.locker;
   if (!L || L.teamId !== team.id) return [];
   return L.captains.map((id) => state.players[id]).filter((p): p is Player => !!p && p.teamId === team.id);
@@ -196,7 +197,7 @@ export function chemFactors(state: GameState, team: Team, recent?: Recent): { ta
 export function chemistryWeek(state: GameState, week: number) {
   const recent = recentByTeam(state, 6);
   for (const t of Object.values(state.teams)) {
-    const { target } = chemFactors(state, t, recent);
+    const { target } = isHuman(state, t.id) ? asTeam(state, t.id, () => chemFactors(state, t, recent)) : chemFactors(state, t, recent);
     t.chem = t.chem == null ? target : Math.round((t.chem + (target - t.chem) * 0.3) * 10) / 10;
   }
   for (const p of Object.values(state.players)) {
@@ -204,6 +205,10 @@ export function chemistryWeek(state: GameState, week: number) {
     const c = state.teams[p.teamId]?.chem ?? CHEM_NEUTRAL;
     p.morale = clamp(p.morale + (c - CHEM_NEUTRAL) * 0.03, 0, 100);
   }
+}
+
+/** weekly, for the current coach: his captains, promises, dilemmas and the chemistry trend */
+export function lockerTick(state: GameState, week: number) {
   if (!['preseason', 'regular', 'confTourney', 'selection', 'ncaa'].includes(state.phase)) return;
   const L = locker(state);
   L.boost = Math.round(L.boost * 0.85 * 10) / 10;
@@ -218,6 +223,9 @@ export function chemistrySeasonEnd(state: GameState) {
     const h = t.history[t.history.length - 1];
     if (h && h.season === state.season && t.chem != null) h.chem = Math.round(t.chem);
   }
+  forEachHuman(state, () => rememberCaptains(state));
+}
+function rememberCaptains(state: GameState) {
   const L = state.locker;
   if (!L || L.teamId !== state.user.teamId || L.season !== state.season) return;
   const names = L.captains.map((id) => state.players[id]).filter(Boolean).map((p) => name(p));
@@ -226,10 +234,12 @@ export function chemistrySeasonEnd(state: GameState) {
 
 /** a fresh season: chemistry starts from scratch (continuity matters most now) */
 export function chemistryNewSeason(state: GameState) {
-  for (const t of Object.values(state.teams)) t.chem = chemFactors(state, t, {}).target;
-  const L = locker(state);
-  L.trend = [state.teams[state.user.teamId].chem ?? CHEM_NEUTRAL];
-  captainsInbox(state, L);
+  for (const t of Object.values(state.teams)) t.chem = (isHuman(state, t.id) ? asTeam(state, t.id, () => chemFactors(state, t, {})) : chemFactors(state, t, {})).target;
+  forEachHuman(state, () => {
+    const L = locker(state);
+    L.trend = [state.teams[state.user.teamId].chem ?? CHEM_NEUTRAL];
+    captainsInbox(state, L);
+  });
 }
 
 /** in games: chemistry is a small edge in every rating and in the clutch */
@@ -604,9 +614,11 @@ export function seniorNight(state: GameState, g: ScheduledGame) {
 /** multiplier on a player's chance of entering the portal */
 export function portalLockerMul(state: GameState, p: Player, team: Team): number {
   let m = portalChemMul(team.chem);
-  if (team.id === state.user.teamId && state.locker?.teamId === team.id && state.locker.captains.includes(p.id)) m *= 0.7;
+  if (isHuman(state, team.id) && asTeam(state, team.id, () => state.locker?.teamId === team.id && state.locker.captains.includes(p.id))) m *= 0.7;
   return m;
 }
 export function doorOpen(state: GameState, playerId: string) {
-  return !!state.locker && state.locker.teamId === state.user.teamId && state.locker.doorOpen.includes(playerId);
+  const t = state.players[playerId]?.teamId;
+  if (!t || !isHuman(state, t)) return false;
+  return asTeam(state, t, () => !!state.locker && state.locker.teamId === t && state.locker.doorOpen.includes(playerId));
 }
