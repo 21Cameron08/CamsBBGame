@@ -5,6 +5,7 @@ import { TeamLogo, CoachFace } from '../components/common';
 
 const ITEMS: { id: Screen; icon: string; label: string; section?: string }[] = [
   { id: 'home', icon: '🏠', label: 'Dashboard', section: 'Program' },
+  { id: 'league', icon: '🌐', label: 'Online League' },
   { id: 'inbox', icon: '📨', label: 'Office' },
   { id: 'roster', icon: '👥', label: 'Roster & Lineup' },
   { id: 'locker', icon: '🧩', label: 'Locker Room' },
@@ -40,6 +41,7 @@ export function Sidebar() {
   const staffOpen = g.staff ? 6 - g.staff.members.length : 0;
   const offseason = !['preseason', 'regular', 'confTourney', 'selection', 'ncaa'].includes(g.phase);
   const unheard = unheardCount(g);
+  const online = useGame((s) => s.online);
   const lockerAlert = !offseason && g.phase !== 'selection' && g.phase !== 'ncaa' && !(g.locker?.teamId === team.id && g.locker.captains.length) ? 'Name your captains' : (team.chem ?? 60) < 40 ? 'Chemistry is low' : '';
   useRadioNotice(g);
   return (
@@ -57,6 +59,7 @@ export function Sidebar() {
               <span className="label">{it.label}</span>
               {it.id === 'inbox' && unread > 0 && <span className="nav-badge">{unread}</span>}
               {it.id === 'staff' && staffOpen > 0 && <span className="nav-badge" title="Vacant staff roles">{staffOpen}</span>}
+              {it.id === 'league' && online && <span className="nav-badge soft">LIVE</span>}
               {it.id === 'locker' && lockerAlert && <span className="nav-badge soft" title={lockerAlert}>!</span>}
               {it.id === 'offseason' && offseason && <span className="nav-badge soft pulse">LIVE</span>}
               {it.id === 'radio' && unheard > 0 && screen !== 'radio' && <span className="nav-badge soft" title={`${unheard} new episode${unheard > 1 ? 's' : ''}`}>NEW</span>}

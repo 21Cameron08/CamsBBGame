@@ -12,6 +12,8 @@ export function advanceActions(g: GameState): { main: AdvanceAction; extra: Adva
   const user = g.teams[g.user.teamId];
   const sim = (m: Parameters<typeof st.advance>[0]) => () => void st.advance(m);
   const extras: AdvanceAction[] = [];
+  // online leagues: the server plays the games; your move is to submit your turn
+  if (st.online) return { main: { label: 'Online League', sub: 'Submit your turn', run: () => st.nav('league'), kind: 'primary' }, extra: [] };
   switch (g.phase) {
     case 'preseason':
       return { main: { label: 'Start the Season', sub: 'Tip-off week', run: sim('day'), kind: 'primary' }, extra: [] };

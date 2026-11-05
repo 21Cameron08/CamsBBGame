@@ -18,6 +18,7 @@ import type { GameState } from '../../engine/types';
 import { REALIGN_INFO } from '../../engine/realignment';
 import type { RealignMode } from '../../engine/types';
 import { CloudSaves } from '../components/CloudSaves';
+import { JoinLeague } from './League';
 
 export function TitleScreen() {
   const [mode, setMode] = useState<'title' | 'new'>('title');
@@ -37,6 +38,7 @@ function Title({ onNew }: { onNew: () => void }) {
   const del = useGame((s) => s.deleteSave);
   const toast = useGame((s) => s.toast);
   const [cloud, setCloud] = useState(false);
+  const [join, setJoin] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const showcase = useMemo(() => {
     const ids = ['duke', 'kentucky', 'kansas', 'north-carolina', 'uconn', 'ucla', 'gonzaga', 'houston', 'michigan-state', 'villanova', 'arizona', 'indiana', 'purdue', 'florida', 'auburn', 'baylor'];
@@ -61,6 +63,7 @@ function Title({ onNew }: { onNew: () => void }) {
           {saves[0] && <button className="btn xl" onClick={() => void load(saves[0].id)}>Continue</button>}
           <button className="btn xl" onClick={() => fileRef.current?.click()}>Import Save</button>
           <button className="btn xl" onClick={() => setCloud(!cloud)}>☁️ Cloud Saves</button>
+          <button className="btn xl" onClick={() => setJoin(!join)}>🌐 Online League</button>
           <input ref={fileRef} type="file" accept=".json,application/json" hidden onChange={async (e) => {
             const f = e.target.files?.[0];
             if (!f) return;
@@ -72,6 +75,13 @@ function Title({ onNew }: { onNew: () => void }) {
             e.target.value = '';
           }} />
         </motion.div>
+        {join && (
+          <motion.div className="card" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 24, padding: 18, maxWidth: 560, marginInline: 'auto' }}>
+            <div className="h3" style={{ marginBottom: 6 }}>🌐 Online League</div>
+            <div className="tiny muted" style={{ marginBottom: 10 }}>Got a code from a friend? Join here. To start your own league, open a dynasty and go to Online League in the sidebar.</div>
+            <JoinLeague />
+          </motion.div>
+        )}
         {cloud && (
           <motion.div className="card" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 24, padding: 18 }}>
             <div className="h3" style={{ marginBottom: 10 }}>☁️ Cloud Saves</div>

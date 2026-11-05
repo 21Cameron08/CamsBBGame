@@ -198,6 +198,18 @@ Production build: `npm run build`, then `npm run preview` (or host the `dist/` f
   - the captain picker, the groups in the room, a season log and past captains
 - chemistry shows up on the dashboard, the pregame screen, at press conferences ("Is your locker room fractured?") and on Full Court Fanatics
 
+### 🌐 Online leagues (on the Vercel version)
+- **Play a dynasty with friends.** Start a league from any dynasty (Online League in the sidebar) and share the 6-letter code. Friends join from the title screen by picking a school and naming their coach, up to 8 coaches.
+- **Turn-based weeks:**
+  1. Load the new week. Your games, press conferences and news arrive.
+  2. Make your moves: recruiting, lineup, practice, NIL and your Office.
+  3. Submit your turn and click Ready.
+  4. The commissioner advances once everyone is ready (or forces it), and the server plays everyone's games.
+- every coach has their own Office, staff, locker room, recruiting board, press conferences, Awards Night, portal, season review and job offers
+- coaches can play at the same time: the server only takes what belongs to each coach, and turns from an older week are refused
+- your league membership key lives in your browser, and **☁️ Cloud Saves** (Settings → Saves, or the title screen) keep single-player dynasties in sync across devices
+- server: `api/league.js` (built from `server/` with `npm run build:api`) and `api/cloud.ts`, storing leagues and saves in a private Vercel Blob store
+
 ### 🏀 Pros from your program
 - **Every drafted player gets a pro career.** He develops toward his ceiling, then declines with age. He plays in the NBA, the G League or overseas, and he can be traded, become a star or a bust, and eventually retire.
 - **Honors:** All-Star nods, All-NBA teams, MVPs, Rookie of the Year and NBA titles, plus career scoring and earnings

@@ -26,11 +26,11 @@ export function setCloudCode(code: string): boolean {
   return true;
 }
 
-async function gzip(text: string): Promise<Blob> {
+export async function gzip(text: string): Promise<Blob> {
   const s = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
   return new Response(s).blob();
 }
-async function gunzip(data: Blob): Promise<string> {
+export async function gunzip(data: Blob): Promise<string> {
   const s = data.stream().pipeThrough(new DecompressionStream('gzip'));
   return new Response(s).text();
 }

@@ -34,6 +34,7 @@ import { LiveGame } from './overlays/LiveGame';
 import { PressConferenceView } from './overlays/PressConference';
 import { MomentHost } from './overlays/Moments';
 import { Toasts, BusyOverlay } from './shell/Feedback';
+import { LeagueScreen } from './screens/League';
 
 const SCREENS: Record<Screen, React.FC> = {
   home: Dashboard,
@@ -60,6 +61,7 @@ const SCREENS: Record<Screen, React.FC> = {
   rivalries: RivalriesScreen,
   facilities: FacilitiesScreen,
   locker: LockerRoomScreen,
+  league: LeagueScreen,
 };
 
 export default function App() {

@@ -21,10 +21,11 @@ import { ensurePros } from '../engine/pros';
 import { ensurePstats } from '../engine/pstats';
 import { ensureRivalries, rivalCrowd } from '../engine/rivalry';
 import { facilityCrowd, ensureBuild } from '../engine/facilities';
+import { downloadLeague, sessionFor, takeJobOnline, type OnlineSession } from './online';
 
 export type Screen =
   | 'home' | 'roster' | 'staff' | 'schedule' | 'recruiting' | 'portal' | 'nil' | 'rankings' | 'standings' | 'bracket'
-  | 'media' | 'stats' | 'coach' | 'inbox' | 'offseason' | 'settings' | 'history' | 'development' | 'records' | 'radio' | 'programs' | 'rivalries' | 'facilities' | 'locker';
+  | 'media' | 'stats' | 'coach' | 'inbox' | 'offseason' | 'settings' | 'history' | 'development' | 'records' | 'radio' | 'programs' | 'rivalries' | 'facilities' | 'locker' | 'league';
 
 export type Modal =
   | { kind: 'player'; id: string }
@@ -57,6 +58,9 @@ interface Store {
   saves: SaveMeta[];
   prefs: Prefs;
   booted: boolean;
+  /** set while playing an online league: the server sims, you submit turns */
+  online: OnlineSession | null;
+  setOnline(s: OnlineSession | null): void;
   init(): Promise<void>;
   newGame(o: Omit<NewGameOptions, 'overrides'>): Promise<void>;
   load(id: string): Promise<void>;
@@ -95,6 +99,8 @@ export const useGame = create<Store>((set, get) => ({
   saves: [],
   prefs: { sound: true, reduceMotion: false },
   booted: false,
+  online: null,
+  setOnline(s) { set({ online: s }); },
 
   async init() {
     const [saves, prefs] = await Promise.all([listSaves(), getPrefs()]);
@@ -108,7 +114,7 @@ export const useGame = create<Store>((set, get) => ({
     await yieldUI();
     const overrides = await allTeamMods();
     const g = createWorld({ ...o, overrides });
-    set({ game: g, tick: 1, screen: 'home', busy: null, modal: null, live: null });
+    set({ game: g, tick: 1, screen: 'home', busy: null, modal: null, live: null, online: null });
     await get().save();
   },
 
@@ -135,7 +141,7 @@ export const useGame = create<Store>((set, get) => ({
     recordBook(g);
     playbookState(g);
     if (migrated) g.version = Math.max(g.version, 2);
-    set({ game: g, tick: get().tick + 1, screen: 'home', busy: null, modal: null, live: null });
+    set({ game: g, tick: get().tick + 1, screen: 'home', busy: null, modal: null, live: null, online: sessionFor(g.saveId) });
     if (migrated) {
       get().toast('New: your Coaching Staff has arrived — check the Staff page.', 'good');
       void get().save();
@@ -192,6 +198,7 @@ export const useGame = create<Store>((set, get) => ({
   },
 
   startLive() {
+    if (get().online) { get().toast('In an online league the server plays the games. Submit your turn on the League page.', 'bad'); get().nav('league'); return; }
     const g = get().game;
     if (!g) return;
     const game = userGameToday(g);
@@ -219,6 +226,7 @@ export const useGame = create<Store>((set, get) => ({
   abandonLive() { set({ live: null }); },
 
   quickSimUserGame() {
+    if (get().online) { get().toast('In an online league the server plays the games. Submit your turn on the League page.', 'bad'); get().nav('league'); return; }
     get().mutate((g) => {
       const game = userGameToday(g);
       if (game) playGame(g, game);
@@ -227,6 +235,7 @@ export const useGame = create<Store>((set, get) => ({
   },
 
   async advance(mode) {
+    if (get().online) { get().toast('In an online league the server plays the games. Submit your turn on the League page.', 'bad'); get().nav('league'); return; }
     const g = get().game;
     if (!g || get().busy) return;
     if (!['preseason', 'regular', 'confTourney', 'selection', 'ncaa'].includes(g.phase)) {
@@ -272,6 +281,7 @@ export const useGame = create<Store>((set, get) => ({
   },
 
   async continueOffseason() {
+    if (get().online) { get().toast('In an online league the server plays the games. Submit your turn on the League page.', 'bad'); get().nav('league'); return; }
     const g = get().game;
     if (!g) return;
     if (g.phase === 'seasonEnd' && g.user.fired && g.user.offers.length) {
@@ -297,6 +307,19 @@ export const useGame = create<Store>((set, get) => ({
   },
 
   acceptJob(teamId) {
+    const on = get().online;
+    if (on) {
+      // online: the server makes the move, then you load the new world
+      void (async () => {
+        try {
+          await takeJobOnline(on, teamId);
+          const g = await downloadLeague(on);
+          await get().loadState(g);
+          get().toast('New job accepted.', 'good');
+        } catch (e) { get().toast((e as Error).message, 'bad'); }
+      })();
+      return;
+    }
     get().mutate((g) => takeJob(g, teamId));
   },
 
