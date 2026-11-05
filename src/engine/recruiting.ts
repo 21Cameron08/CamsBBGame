@@ -5,6 +5,7 @@ import { ARCHETYPES_BY_POS, buildRatings, calcOvr, fmtMoney, genFollowers, genNa
 import { milesBetween } from '../data/places';
 import { teamPlayers, ROSTER_MAX, confTierOf } from './team';
 import { staffEffects } from './staff';
+import { academicBonus } from './facilities';
 
 export const RECRUIT_ACTIONS = {
   text: { label: 'Text', hours: 1, pts: 2.5, desc: 'Quick check-in. Small relationship boost.' },
@@ -190,7 +191,7 @@ export function teamAppeal(state: GameState, r: Recruit, team: Team, nilOffer = 
     proximity: clamp(100 - miles / 12, 0, 100),
     coach: clamp((coach?.reputation ?? 50) * 0.8 + (coach ? coach.skills.recruiting * 2 : 10) + (team.id === state.user.teamId && state.staff && staffPipelineState(state) === r.state ? 12 : 0), 0, 100),
     pro: clamp(team.prestige * 0.6 + (coach ? coach.skills.development * 4 : 20) + (team.facilities ?? 5) * 2, 0, 100),
-    academics: clamp(team.academics * 10, 0, 100),
+    academics: clamp(team.academics * 10 + academicBonus(state, team.id), 0, 100),
     winning: clamp(50 + team.rating * 2.2 + (team.record.w - team.record.l) * 1.5, 0, 100),
   };
   let total = 0;

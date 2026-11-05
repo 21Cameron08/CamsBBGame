@@ -9,6 +9,7 @@ const ITEMS: { id: Screen; icon: string; label: string; section?: string }[] = [
   { id: 'roster', icon: '👥', label: 'Roster & Lineup' },
   { id: 'development', icon: '🏋️', label: 'Player Development' },
   { id: 'staff', icon: '📋', label: 'Coaching Staff' },
+  { id: 'facilities', icon: '🏗️', label: 'Facilities & Boosters' },
   { id: 'schedule', icon: '📅', label: 'Schedule' },
   { id: 'rivalries', icon: '🔥', label: 'Rivalries' },
   { id: 'recruiting', icon: '🎯', label: 'Recruiting', section: 'Build' },

@@ -386,6 +386,8 @@ export interface InboxChoice {
   goto?: string;
   /** conference invitation decision */
   realign?: { moveId: string; accept: boolean };
+  /** booster request decision */
+  booster?: { id: string; action: 'naming' | 'pet' | 'seats' | 'walkon' | 'demand'; accept: boolean; amount?: number; key?: FacilityKey };
   /** short preview of effects shown in UI */
   hint?: string;
   effects: Effect[];
@@ -673,7 +675,8 @@ export type Moment =
   | { kind: 'selection'; season: number; press?: PressConference | null }
   | { kind: 'rivalry'; key: string; teamId: string; oppId: string; label: string; sub: string; trophy?: string }
   | { kind: 'awards'; season: number; press?: PressConference | null }
-  | { kind: 'conference'; teamId: string; from: string; to: string };
+  | { kind: 'conference'; teamId: string; from: string; to: string }
+  | { kind: 'facility'; teamId: string; key: FacilityKey; level: number; name: string };
 
 export interface GameState {
   version: number;
@@ -714,6 +717,8 @@ export interface GameState {
   staff?: StaffState;
   /** jerseys retired during the dynasty (created on first use) */
   legacy?: { retired: Record<string, RetiredJersey[]> };
+  /** program building: facilities, boosters and the program fund, per school you've coached */
+  build?: Record<string, ProgramBuild>;
   /** conference realignment moves, announced and completed */
   realign?: { moves: RealignMove[] };
   /** Awards Night shows (recent seasons) and the Hall of Fame (older saves start without them) */
@@ -1119,4 +1124,45 @@ export interface RealignMove {
   status: 'pending' | 'done' | 'declined';
   /** the user's school was invited and gets a say */
   userChoice?: boolean;
+}
+
+// ---------------- Program building ----------------
+export type FacilityKey = 'practice' | 'arena' | 'medical' | 'lounge' | 'film' | 'recruiting' | 'academic';
+export type BoosterStyle = 'loyal' | 'win-now' | 'old-guard' | 'flashy' | 'academic';
+export interface Booster {
+  id: string;
+  name: string;
+  business: string;
+  style: BoosterStyle;
+  /** what they can give in a good year (dollars) */
+  capacity: number;
+  /** 0-100 */
+  mood: number;
+  /** the project they want built */
+  pet: FacilityKey;
+  /** season of your last thank-you call */
+  called?: number;
+  /** lifetime giving to this program */
+  given: number;
+  /** they paid up front for their pet project this season */
+  promise?: { key: FacilityKey; season: number };
+}
+export interface FacilityProject { key: FacilityKey; level: number; cost: number; started: number; opens: number }
+export interface ProgramBuild {
+  teamId: string;
+  fund: number;
+  levels: Record<FacilityKey, number>;
+  /** levels when you arrived (only your upgrades add bonuses) */
+  start: Record<FacilityKey, number>;
+  /** base facilities rating from the school's data */
+  baseRating: number;
+  projects: FacilityProject[];
+  boosters: Booster[];
+  ledger: { season: number; label: string; amount: number }[];
+  /** naming rights given to boosters */
+  names: Partial<Record<FacilityKey, string>>;
+  /** last season-end donation total */
+  lastDonations?: number;
+  /** what opened at the start of a season (for the press) */
+  opened?: { season: number; keys: FacilityKey[] };
 }

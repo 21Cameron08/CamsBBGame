@@ -5,6 +5,7 @@ import { FIRST_NAMES, LAST_NAMES } from '../data/names';
 import { PLACES } from '../data/places';
 import { genAICoach, hoursForWeek } from './coach';
 import { roundMoney, fmtMoney } from './player';
+import { applyFacilities } from './facilities';
 
 export const STAFF_ROLES: StaffRole[] = ['assoc', 'recruiting', 'defense', 'development', 'gm', 'strength'];
 
@@ -174,7 +175,8 @@ export const NO_EFFECTS: StaffEffects = {
   dev: 0, nilMul: 1, portal: 0, retentionMul: 1, stamina: 1, injury: 1, morale: 0,
 };
 
-export function staffEffects(state: GameState): StaffEffects {
+/** The user's program effects: the coaching staff, plus facility upgrades unless staffOnly */
+export function staffEffects(state: GameState, staffOnly = false): StaffEffects {
   const st = state.staff;
   if (!st) return NO_EFFECTS;
   const e: StaffEffects = { ...NO_EFFECTS };
@@ -211,13 +213,14 @@ export function staffEffects(state: GameState): StaffEffects {
     }
     if (t === 'Players’ Favorite') e.morale += 0.3;
   }
+  if (!staffOnly) applyFacilities(state, e);
   e.hours = Math.max(0, e.hours);
   return e;
 }
 
 /** Human readable impact chips for the UI */
 export function staffImpact(state: GameState): { icon: string; label: string; good: boolean }[] {
-  const e = staffEffects(state);
+  const e = staffEffects(state, true);
   const out: { icon: string; label: string; good: boolean }[] = [];
   const sign = (v: number, d = 1) => `${v >= 0 ? '+' : ''}${v.toFixed(d)}`;
   if (member(state, 'recruiting')) out.push({ icon: '🎯', label: `${e.hours >= 0 ? '+' : ''}${e.hours} recruiting hrs/wk`, good: e.hours > 0 });

@@ -22,6 +22,7 @@ import { staffEffects, resolvePoach, applyStaffRenewChoice } from './staff';
 import { radioWeekly } from './radio';
 import { rivalryOf, rivalCrowd, rivalryResult, rivalryWeek, rivalryRecruit } from './rivalry';
 import { answerInvitation } from './realignment';
+import { facilityCrowd, boosterWeek, resolveBooster } from './facilities';
 
 export function isUserGame(state: GameState, g: ScheduledGame) {
   return g.home === state.user.teamId || g.away === state.user.teamId;
@@ -47,7 +48,7 @@ function gameScore(p: { pts: number; fgm: number; fga: number; fta: number; ftm:
 export function simGame(state: GameState, g: ScheduledGame): BoxScore {
   const home = state.teams[g.home], away = state.teams[g.away];
   return simulateGame(simSetup(state, home), simSetup(state, away), {
-    neutral: g.neutral, crowd: clamp(home.hype / 100 + rivalCrowd(state, g.home, g.away), 0, 1), tourney: g.type === 'ncaa',
+    neutral: g.neutral, crowd: clamp(home.hype / 100 + rivalCrowd(state, g.home, g.away) + (g.neutral ? 0 : facilityCrowd(state, g.home)), 0, 1), tourney: g.type === 'ncaa',
   });
 }
 
@@ -270,7 +271,9 @@ export function weeklyTick(state: GameState, week: number) {
     p.morale = clamp(p.morale + (65 - p.morale) * 0.04, 0, 100);
     if (p.teamId === state.user.teamId && !p.nil && p.ovr >= 55) p.morale = clamp(p.morale - 2, 0, 100);
     if (p.stats.gp) p.followers = Math.round(p.followers * (1 + Math.min(0.04, (p.stats.pts / p.stats.gp) * 0.0012)));
-  }  // rivalry week headlines, then the weekly fan radio show
+  }  // a booster may come calling
+  boosterWeek(state);
+  // rivalry week headlines, then the weekly fan radio show
   if (state.phase === 'regular' || state.phase === 'confTourney') rivalryWeek(state);
   radioWeekly(state);
 }
@@ -316,6 +319,7 @@ export function resolveInbox(state: GameState, id: string, choiceIdx: number): s
   if (ch.staffPoach) resolvePoach(state, ch.staffPoach.staffId, ch.staffPoach.teamId, ch.staffPoach.keep);
   if (ch.staffRenew != null) applyStaffRenewChoice(state, ch.staffRenew);
   if (ch.realign) answerInvitation(state, ch.realign.moveId, ch.realign.accept);
+  if (ch.booster) resolveBooster(state, ch.booster);
   if (ch.redshirt) {
     const p = state.players[ch.redshirt];
     if (p) p.redshirting = true;

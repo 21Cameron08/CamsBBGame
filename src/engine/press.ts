@@ -16,6 +16,7 @@ import { recordsInGame, GAME_CATS, TEAM_GAME_CATS, fmtRec } from './records';
 import { loreOf, ringOfHonor, retiredJerseys } from './legacy';
 import { rivalryOf } from './rivalry';
 import { newcomer, pendingMoves } from './realignment';
+import { FACILITIES } from './facilities';
 
 type Tone = PressQuestion['answers'][number]['tone'];
 type Answer = PressQuestion['answers'][number];
@@ -796,6 +797,20 @@ export function mediaDayPresser(state: GameState): PressConference {
     ]),
   });
   cands.push(funQuestion(state, team, 'md'));
+  // a facility opened this season
+  const opened = state.build?.[team.id]?.opened;
+  if (opened && opened.season === state.season && opened.keys.length) {
+    const k = opened.keys[0];
+    const nm2 = state.build![team.id].names[k] ?? FACILITIES[k].name;
+    cands.push({
+      key: 'md.facility', topic: 'facility', w: 7,
+      build: () => makeQ(team, { role: 'beat', tag: 'Program building' }, `The new ${nm2} just opened. How much of a difference will it make?`, [
+        A('confident', `A big one. Recruits walk in and their eyes get wide. Our guys feel it every day.`, [{ kind: 'recruitInterest', delta: 3 }, { kind: 'hype', delta: 3 }]),
+        A('praise', `Credit our boosters and our administration. They backed this program in a big way.`, [{ kind: 'mediaRep', delta: 3 }]),
+        A('joke', `I've been sleeping there. Don't tell my wife.`, [{ kind: 'hype', delta: 3 }, { kind: 'mediaRep', delta: 3 }]),
+      ]),
+    });
+  }
   // first season in a new conference
   if (newcomer(state, team.id) && c.conf) {
     const prev = team.history[team.history.length - 1]?.conf;

@@ -141,6 +141,31 @@ Production build: `npm run build`, then `npm run preview` (or host the `dist/` f
   - The **Staff auto-recruit** toggle lets your assistants work the portal for you.
 - **NBA Draft.** Early-entry decisions, then two rounds of picks. Producing pros boosts your program.
 
+### 🏗️ Program building: facilities and boosters
+- **Program Fund**, a separate pot from NIL, filled at the end of every season by annual donations, booster gifts and NCAA Tournament payouts (from $150K for the First Four up to $4M for a title). Every program starts with one year of donations.
+- **Seven facilities**, each with five levels. Upgrades take one season to open, or two for levels 4 and 5. Costs scale with the program, and you can run two projects at once.
+  - 🏋️ Practice Facility: player development
+  - 🏟️ Arena & Fan Experience: home-crowd energy, preseason hype, donations
+  - 🩺 Sports Science & Medicine: injury risk and fatigue
+  - 🛋️ Players' Lounge & Locker Room: weekly morale, cheaper retention asks, motivation
+  - 🎥 Film & Analytics Suite: tactics (installs and game plans), defense
+  - 🎯 Recruiting Center: recruiting hours, relationship gains, portal pull
+  - 🎓 Academic Center: academic appeal with recruits, fewer eligibility scares
+- **Only your upgrades count.** What you inherit is already part of the school's prestige, so a low-major that builds can close the gap. Your upgrades also raise the school's facilities rating, which recruits and transfers notice.
+- **Boosters** (3–6 per school), each with a personality:
+  - Lifer, Win-Now, Old Guard, Flashy or Academic
+  - a mood that rises and falls with your season
+  - a pet project, and matching gifts when you build it
+  - one thank-you call per season each
+- **Booster requests** in your Office, each with strings attached:
+  - naming rights ("the Hunt Family Arena")
+  - money for their pet project (break your promise and they remember)
+  - courtside seats for clients
+  - a nephew who wants a roster spot
+  - ultimatums during losing streaks
+- **Move money to NIL**: send fund money to this season's NIL pool (20% lost to fees, and the old guard won't love it)
+- ribbon-cutting celebrations when facilities open, a media-day question, and a ledger of every dollar
+
 ### 🏋️ Player development
 - **A development plan for every player.** Pick one of seven focuses:
   - Balanced
@@ -357,6 +382,7 @@ src/
     rivalry.ts     Rivalries 2.0: heat, series, trophies, born/faded rivalries, rivalry week
     awards.ts      season awards, Awards Night show data, Hall of Fame inductions
     realignment.ts conference realignment: waves of moves, invitations, backfill, applying moves
+    facilities.ts  program building: the program fund, facilities, boosters and their requests
     events.ts / media.ts   story events, news & social
     staff.ts       coaching staff: market, effects, contracts, poaching, coaching tree
     scheduling.ts  Scheduling Office: Feast Week events, booking rules, guarantees, series, résumé meter

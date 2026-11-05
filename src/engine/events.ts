@@ -4,6 +4,7 @@ import type { GameState, InboxItem, Player, InboxChoice } from './types';
 import { teamPlayers } from './team';
 import { fmtMoney, roundMoney, nilValue } from './player';
 import { FIRST_NAMES, LAST_NAMES } from '../data/names';
+import { academicUpgrades } from './facilities';
 
 let seq = 0;
 function mk(state: GameState, o: Omit<InboxItem, 'id' | 'day' | 'season' | 'resolved'>): InboxItem {
@@ -80,6 +81,7 @@ const GENERATORS: { w: number; phase: ('regular' | 'preseason' | 'confTourney' |
       const ps = teamPlayers(s, s.user.teamId);
       const p = pickPlayer(ps, (x) => !x.traits.includes('scholar'));
       if (!p) return null;
+      if (rng.chance(0.15 * academicUpgrades(s))) return null; // the Academic Center caught it early
       return mk(s, {
         from: 'Academic Advisor', fromRole: 'Academic Support', subject: `${p.first} ${p.last} — eligibility concern`,
         body: `${p.first} is failing a required class. If his grade doesn't improve before finals he could be ruled ineligible. We can assign mandatory tutoring, but it will cut into his practice time.`,

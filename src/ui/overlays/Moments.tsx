@@ -8,6 +8,7 @@ import { sfx } from '../sound';
 import { decisionSummary } from '../../engine/recruiting';
 import { SelectionShow } from './SelectionShow';
 import { AwardsShow } from './AwardsShow';
+import { FACILITIES as FACILITY_INFO } from '../../engine/facilities';
 
 export function MomentHost() {
   const g = useGame((s) => s.game);
@@ -46,6 +47,10 @@ function MomentView({ g, m }: { g: GameState; m: Moment }) {
     case 'title': {
       const t = g.teams[m.teamId];
       return <TitleMoment team={t} label={m.label} onDone={dismiss} />;
+    }
+    case 'facility': {
+      const t = g.teams[m.teamId];
+      return <FacilityMoment team={t} icon={FACILITY_INFO[m.key].icon} name={m.name} level={m.level} desc={FACILITY_INFO[m.key].per} onDone={dismiss} onGo={() => { dismiss(); nav('facilities'); }} />;
     }
     case 'conference': {
       const t = g.teams[m.teamId];
@@ -306,6 +311,26 @@ function ConferenceMoment({ team, from, to, toShort, toColor, onDone }: { team: 
         <motion.div className="num" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.1 }} style={{ fontSize: 'clamp(36px, 6vw, 70px)', lineHeight: 1.02, marginTop: 18, textShadow: `0 0 36px ${team.colors[0]}` }}>WELCOME TO THE {toShort.toUpperCase()}</motion.div>
         <div className="muted" style={{ marginTop: 10 }}>{team.school} starts a new chapter this season: new opponents, new road trips, new rivals.</div>
         <button className="btn gold lg" style={{ marginTop: 22 }} onClick={onDone}>Let's go</button>
+      </motion.div>
+    </Shell>
+  );
+}
+
+function FacilityMoment({ team, icon, name, level, desc, onDone, onGo }: { team: Team; icon: string; name: string; level: number; desc: string; onDone: () => void; onGo: () => void }) {
+  useEffect(() => { sfx.fanfare(); sfx.crowd(0.9); }, []);
+  return (
+    <Shell colors={team.colors} onClose={onDone}>
+      <Confetti colors={[team.colors[0], team.colors[1], '#ffffff']} count={140} duration={4000} />
+      <motion.div initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 170, damping: 14 }} style={{ textAlign: 'center', maxWidth: 760 }}>
+        <div className="eyebrow" style={{ color: '#ffd27a' }}>Ribbon cutting · {team.school}</div>
+        <motion.div style={{ fontSize: 96, marginTop: 6 }} animate={{ y: [0, -8, 0] }} transition={{ repeat: Infinity, duration: 2.2 }}>{icon}</motion.div>
+        <div className="row" style={{ justifyContent: 'center', gap: 5, marginTop: 4 }}>{Array.from({ length: 5 }, (_, i) => <span key={i} className={`fac-pip ${i < level ? 'built' : ''}`} style={{ width: 26, height: 9 }} />)}</div>
+        <div className="num" style={{ fontSize: 'clamp(32px, 5.5vw, 62px)', lineHeight: 1.04, marginTop: 14, textShadow: `0 0 36px ${team.colors[0]}` }}>THE {name.toUpperCase()} IS OPEN</div>
+        <div className="muted" style={{ marginTop: 10 }}>Level {level}. {desc}.</div>
+        <div className="row" style={{ justifyContent: 'center', gap: 10, marginTop: 22 }}>
+          <button className="btn" onClick={onGo}>🏗️ Facilities</button>
+          <button className="btn gold lg" onClick={onDone}>Cut the ribbon ✂️</button>
+        </div>
       </motion.div>
     </Shell>
   );

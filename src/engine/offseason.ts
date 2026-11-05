@@ -26,6 +26,7 @@ import { runAwards, stageAwardsNight } from './awards';
 import { finalizeProgramSeason, coachExit, recordClassRanks } from './pstats';
 import { rivalrySeasonEnd, rivalryCoachMove } from './rivalry';
 import { planRealignment, applyRealignment } from './realignment';
+import { seasonDonations, openFacilities, programBuild } from './facilities';
 
 const NCAA_BONUS: Record<string, number> = { Champion: 30, 'Runner-up': 22, 'Final Four': 18, 'Elite Eight': 12, 'Sweet 16': 8, 'Round of 32': 4, 'Round of 64': 1, 'First Four': 0.5 };
 
@@ -120,6 +121,7 @@ export function beginSeasonEnd(state: GameState) {
   finalizeProgramSeason(state);
   rivalrySeasonEnd(state);
   planRealignment(state);
+  seasonDonations(state);
   // coaching carousel
   const carousel = runCarousel(state);
   state.user.fired = fired;
@@ -266,6 +268,7 @@ export function takeJob(state: GameState, teamId: string) {
   addNews(state, { kind: 'coach', headline: `${nu.school} hires ${coach.first} ${coach.last}`, body: `${coach.first} ${coach.last} leaves ${old.school} to take over at ${nu.school}.`, teams: [nu.id, old.id], important: true, personId: coach.id, personKind: 'coach' });
   state.user.moments.push({ kind: 'title', label: `New Job: ${nu.school}`, teamId: nu.id });
   trackProgram(state, nu.id);
+  programBuild(state, nu.id);
   resetPlaybook(state);
   state.user.press = introPresser(state, { fromTeamId: old.id, fired: wasFired });
 }
@@ -459,6 +462,7 @@ export function newSeason(state: GameState) {
     refreshPower(state, t);
   }
   state.offseason = null;
+  openFacilities(state);
   finalizePoaching(state);
   staffNewSeason(state);
   state.schedule = generateSchedule(state);

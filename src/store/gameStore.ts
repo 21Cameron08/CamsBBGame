@@ -19,10 +19,11 @@ import { loreOf } from '../data/lore';
 import { ensureRadio } from '../engine/radio';
 import { ensurePstats } from '../engine/pstats';
 import { ensureRivalries, rivalCrowd } from '../engine/rivalry';
+import { facilityCrowd, ensureBuild } from '../engine/facilities';
 
 export type Screen =
   | 'home' | 'roster' | 'staff' | 'schedule' | 'recruiting' | 'portal' | 'nil' | 'rankings' | 'standings' | 'bracket'
-  | 'media' | 'stats' | 'coach' | 'inbox' | 'offseason' | 'settings' | 'history' | 'development' | 'records' | 'radio' | 'programs' | 'rivalries';
+  | 'media' | 'stats' | 'coach' | 'inbox' | 'offseason' | 'settings' | 'history' | 'development' | 'records' | 'radio' | 'programs' | 'rivalries' | 'facilities';
 
 export type Modal =
   | { kind: 'player'; id: string }
@@ -127,6 +128,7 @@ export const useGame = create<Store>((set, get) => ({
     ensureDevelopment(g);
     ensurePstats(g);
     ensureRivalries(g);
+    ensureBuild(g);
     ensureRadio(g);
     recordBook(g);
     playbookState(g);
@@ -194,7 +196,7 @@ export const useGame = create<Store>((set, get) => ({
     if (!game) return;
     const home = g.teams[game.home], away = g.teams[game.away];
     const sim = new GameSim(simSetup(g, home), simSetup(g, away), {
-      neutral: game.neutral, pbp: true, crowd: clamp(home.hype / 100 + rivalCrowd(g, game.home, game.away), 0, 1), tourney: game.type === 'ncaa',
+      neutral: game.neutral, pbp: true, crowd: clamp(home.hype / 100 + rivalCrowd(g, game.home, game.away) + (game.neutral ? 0 : facilityCrowd(g, game.home)), 0, 1), tourney: game.type === 'ncaa',
       flavor: (() => { const l = loreOf(home.id); return l ? { crowd: l.crowd, closer: l.closer } : undefined; })(),
     });
     const userSide = game.home === g.user.teamId ? 0 : 1;
