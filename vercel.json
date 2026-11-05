@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/league.js": {
+      "maxDuration": 60
+    }
+  }
+}
