@@ -198,6 +198,14 @@ Production build: `npm run build`, then `npm run preview` (or host the `dist/` f
   - the captain picker, the groups in the room, a season log and past captains
 - chemistry shows up on the dashboard, the pregame screen, at press conferences ("Is your locker room fractured?") and on Full Court Fanatics
 
+### 🏀 Pros from your program
+- **Every drafted player gets a pro career.** He develops toward his ceiling, then declines with age. He plays in the NBA, the G League or overseas, and he can be traded, become a star or a bust, and eventually retire.
+- **Honors:** All-Star nods, All-NBA teams, MVPs, Rookie of the Year and NBA titles, plus career scoring and earnings
+- **In the League** (Program History): every pro your school has produced, with status, honors and career numbers, and a national **NBA Pipeline** ranking of schools by former players on NBA rosters
+- **Recruiting:** recruits who care about going pro weigh your NBA pipeline, and their decision reasons say so ("the NBA pipeline: 6 vs 2 former players in the league")
+- offseason headlines when your alumni make an All-Star team, win a title or retire, and a pro check-in on Full Court Fanatics
+- older saves rebuild pro careers from their draft history
+
 ### 🏋️ Player development
 - **A development plan for every player.** Pick one of seven focuses:
   - Balanced
@@ -416,6 +424,7 @@ src/
     realignment.ts conference realignment: waves of moves, invitations, backfill, applying moves
     facilities.ts  program building: the program fund, facilities, boosters and their requests
     chemistry.ts   locker room: team chemistry, captains, dilemmas, promises, Senior Night
+    pros.ts        pro careers for drafted players, the NBA pipeline
     events.ts / media.ts   story events, news & social
     staff.ts       coaching staff: market, effects, contracts, poaching, coaching tree
     scheduling.ts  Scheduling Office: Feast Week events, booking rules, guarantees, series, résumé meter

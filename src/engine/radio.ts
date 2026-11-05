@@ -16,6 +16,7 @@ import { normCdf } from './sim';
 import { rivalryOf as activeRivalry, rivalriesOf, userRivalryThisWeek, heatInfo, seriesFor } from './rivalry';
 import { pendingMoves } from './realignment';
 import { chemLabel } from './chemistry';
+import { prosOf, proTotals } from './pros';
 
 export const SHOW = { name: 'Full Court Fanatics', station: '98.7 The Hoop', slot: 'Monday nights', tagline: 'Two guys. Zero chill. All takes.' };
 export const HOSTS: Record<RadioHost, { name: string; nick: string; short: string; seed: string; colors: [string, string]; bio: string }> = {
@@ -405,6 +406,15 @@ function yoursSeg(c: Ctx): RadioSegment {
       lines.push(D(`You can see it on the floor. Nobody's helping anybody up.`));
     } else if (chem >= 80 && U.record.w > U.record.l && r.chance(0.5)) {
       lines.push(D(`Have you watched ${U.school}'s bench? Those guys love each other. That matters in March.`, 'good'));
+    }
+  }
+  // an alum in the league
+  {
+    const pro = prosOf(state, U.id).find((c) => c.retired == null && c.log[c.log.length - 1]?.[1] === 0);
+    if (pro && r.chance(0.3)) {
+      const t = proTotals(pro);
+      lines.push(D(`Quick pro check: former ${U.mascot.replace(/s$/, '')} ${pro.name} is putting up ${pro.log[pro.log.length - 1][2].toFixed(1)} a game for ${pro.team}${pro.allStar ? `, and he's a ${pro.allStar}-time All-Star` : ''}.`, 'info'));
+      lines.push(S(t.ppg >= 15 ? `Coach ${coach.last} should put that on every recruiting brochure. Twice.` : `I knew he'd make it. I said so on this show. Probably.`));
     }
   }
   // the numbers

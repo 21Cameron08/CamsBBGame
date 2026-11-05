@@ -10,6 +10,7 @@ import { loreOf, preDynastyTitles } from '../../engine/legacy';
 import { ProgramStory, RingOfHonor } from '../components/Legacy';
 import { rivalriesOf } from '../../engine/rivalry';
 import { replayAwardsNight } from '../shell/advance';
+import { InTheLeague } from './Pros';
 
 const TROPHY_ICON: Record<Trophy['kind'], string> = { natl: '🏆', f4: '🥇', e8: '🎖️', s16: '🏅', conf: '🏟️', ctourn: '✂️', coy: '🧢' };
 
@@ -189,18 +190,7 @@ export function HistoryScreen() {
                 );
               })}
             </Section>
-            <Section title="NBA Draft Picks">
-              {myPicks.length === 0 && <div className="small muted">No pros produced yet. Develop talent to build the pipeline.</div>}
-              {myPicks.slice(0, 30).map((d) => (
-                <div key={`${d.season}-${d.pick}`} className="row" style={{ padding: '6px 0', borderBottom: '1px solid var(--line)' }}>
-                  <span className="num" style={{ width: 34, fontSize: 18, color: d.round === 1 ? 'var(--gold)' : 'var(--muted)' }}>#{d.pick}</span>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div className="small b ellipsis">{d.name} <span className="muted">· {d.pos}</span></div>
-                    <div className="tiny muted">{d.nbaTeam} · {d.season} Draft · Rd {d.round}</div>
-                  </div>
-                </div>
-              ))}
-            </Section>
+            <InTheLeague g={g} team={team} />
           </div>
         </div>
 

@@ -17,6 +17,7 @@ import { recordBook } from '../engine/records';
 import { playbookState } from '../engine/schemes';
 import { loreOf } from '../data/lore';
 import { ensureRadio } from '../engine/radio';
+import { ensurePros } from '../engine/pros';
 import { ensurePstats } from '../engine/pstats';
 import { ensureRivalries, rivalCrowd } from '../engine/rivalry';
 import { facilityCrowd, ensureBuild } from '../engine/facilities';
@@ -130,6 +131,7 @@ export const useGame = create<Store>((set, get) => ({
     ensureRivalries(g);
     ensureBuild(g);
     ensureRadio(g);
+    ensurePros(g);
     recordBook(g);
     playbookState(g);
     if (migrated) g.version = Math.max(g.version, 2);

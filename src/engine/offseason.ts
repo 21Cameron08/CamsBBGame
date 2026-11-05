@@ -29,6 +29,7 @@ import { planRealignment, applyRealignment } from './realignment';
 import { seasonDonations, openFacilities, programBuild, aiFacilities } from './facilities';
 import { TEAMS } from '../data/teams';
 import { chemistryNewSeason, chemistrySeasonEnd } from './chemistry';
+import { addPro, ensurePros, proSeason } from './pros';
 
 const NCAA_BONUS: Record<string, number> = { Champion: 30, 'Runner-up': 22, 'Final Four': 18, 'Elite Eight': 12, 'Sweet 16': 8, 'Round of 32': 4, 'Round of 64': 1, 'First Four': 0.5 };
 
@@ -114,6 +115,9 @@ export function beginSeasonEnd(state: GameState) {
   }
   recordSeasonEnd(state);
   chemistrySeasonEnd(state);
+  // the pros: last year's draftees and everyone before them finish their pro seasons
+  ensurePros(state, state.season - 1);
+  proSeason(state, state.season);
 
   // user evaluation
   const uh = user.history[user.history.length - 1];
@@ -426,6 +430,7 @@ export function doDraft(state: GameState) {
     const teamId = p.career.length ? p.career[p.career.length - 1].teamId : '';
     state.draft.push({ season: state.season + 1, pick: pickNo, round: pickNo <= 30 ? 1 : 2, playerId: p.id, name: `${p.first} ${p.last}`, teamId, nbaTeam: order[(pickNo - 1) % 30], pos: p.pos });
     p.history.push(`Drafted No. ${pickNo} overall by ${order[(pickNo - 1) % 30]} (${state.season + 1})`);
+    addPro(state, p, pickNo, order[(pickNo - 1) % 30], teamId);
     if (teamId) {
       const t = state.teams[teamId];
       if (t) t.prestige = clamp(t.prestige + (pickNo <= 14 ? 0.8 : pickNo <= 30 ? 0.4 : 0.15), 1, 99);

@@ -728,6 +728,8 @@ export interface GameState {
   staff?: StaffState;
   /** jerseys retired during the dynasty (created on first use) */
   legacy?: { retired: Record<string, RetiredJersey[]> };
+  /** pro careers of every drafted player (older saves rebuild from the draft history) */
+  pros?: ProState;
   /** your locker room: chemistry, captains and what's happened (created on first use) */
   locker?: LockerState;
   /** the league's prestige scale, best first: every program's prestige when the dynasty began
@@ -1220,3 +1222,24 @@ export type LockerAction =
   | { kind: 'door'; playerId: string }
   | { kind: 'strip'; playerId: string }
   | { kind: 'start'; playerId: string; benchId: string };
+
+// ---------------- pros from your program ----------------
+export interface ProCareer {
+  id: string; name: string; pos: Pos; num: number;
+  /** college team id */
+  college: string;
+  draft: number; pick: number;
+  /** current NBA team */
+  team: string;
+  ovr: number; peak: number; age: number;
+  /** [season, level (0 NBA, 1 G League, 2 overseas), ppg, ...honors] */
+  log: [number, number, number, ...string[]][];
+  allStar: number; allNba: number; rings: number; mvp: number;
+  roy?: number; bust?: boolean; retired?: number;
+  earnings: number;
+}
+export interface ProState {
+  list: Record<string, ProCareer>;
+  champs: { season: number; team: string }[];
+  pipeline: Record<string, { nba: number; allStars: number; alumni: number }>;
+}
