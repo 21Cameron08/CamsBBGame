@@ -7,6 +7,7 @@ import { mix } from '../color';
 import { sfx } from '../sound';
 import { decisionSummary } from '../../engine/recruiting';
 import { SelectionShow } from './SelectionShow';
+import { AwardsShow } from './AwardsShow';
 
 export function MomentHost() {
   const g = useGame((s) => s.game);
@@ -41,6 +42,7 @@ function MomentView({ g, m }: { g: GameState; m: Moment }) {
   switch (m.kind) {
     case 'commit': return <CommitCeremony g={g} m={m} onDone={dismiss} />;
     case 'selection': return <SelectionShow g={g} onDone={dismiss} onBracket={() => { dismiss(); nav('bracket'); }} />;
+    case 'awards': return <AwardsShow g={g} season={m.season} onDone={dismiss} onHof={() => { dismiss(); nav('programs', 'hof'); }} />;
     case 'title': {
       const t = g.teams[m.teamId];
       return <TitleMoment team={t} label={m.label} onDone={dismiss} />;

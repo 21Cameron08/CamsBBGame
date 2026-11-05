@@ -73,6 +73,14 @@ export const PHASE_LABEL: Record<GameState['phase'], string> = {
   seasonEnd: 'Season Review', declarations: 'Draft Declarations', portal: 'Transfer Portal', signing: 'Signing Day', draft: 'NBA Draft', progression: 'Summer Development', scheduling: 'Scheduling Office',
 };
 
+/** Replay an Awards Night (no presser the second time) */
+export function replayAwardsNight(season: number) {
+  useGame.getState().mutate((g) => {
+    if (!g.awardsShows?.some((s) => s.season === season) || g.user.moments.some((m) => m.kind === 'awards')) return;
+    g.user.moments.unshift({ kind: 'awards', season, press: null });
+  }, { save: false });
+}
+
 /** Queue the Selection Sunday show again (no presser the second time) */
 export function replaySelectionShow() {
   useGame.getState().mutate((g) => {

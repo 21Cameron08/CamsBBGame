@@ -236,8 +236,8 @@ export interface CoachSummary {
   schools: string[]; best: CoachSeasonRow | null; score: number; tier: string; rep: number | null;
 }
 export const TIERS: { min: number; label: string; cls: string }[] = [
-  { min: 300, label: 'Legend', cls: 'gold' },
-  { min: 180, label: 'Hall of Famer', cls: 'gold' },
+  { min: 260, label: 'Legend', cls: 'gold' },
+  { min: 140, label: 'Hall of Famer', cls: 'gold' },
   { min: 100, label: 'Elite', cls: 'accent' },
   { min: 45, label: 'Proven', cls: 'blue' },
   { min: 15, label: 'Rising', cls: 'good' },

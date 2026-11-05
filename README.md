@@ -225,7 +225,20 @@ Production build: `npm run build`, then `npm run preview` (or host the `dist/` f
   - a result card with your seed, first opponent, likely second-round matchup, the No. 1 seeds and the conferences with the most bids
   - **1×, 2× and 4× speed**, pause (Space), next (→) and **skip** (Esc), plus a **replay** button on the Bracket page
   - your Selection Sunday press conference follows the show
-- **Awards**: National POY, All-American teams, Freshman of the Year, DPOY, Coach of the Year, conference POYs, Final Four MOP.
+- **Awards**:
+  - National POY, All-American teams, Freshman of the Year, DPOY, Coach of the Year, conference POYs and Final Four MOP
+  - added with Awards Night: **Sixth Man of the Year**, **Most Improved Player**, **Transfer of the Year**, **Performance of the Year**, **Upset of the Year** and **Game of the Year**
+- **Awards Night**, an animated awards show at the end of every season:
+  - for each award: the nominees flip in, the envelope opens, and the winner gets the spotlight and confetti. If it's your player or you, there's a "YOURS!" celebration.
+  - the All-America First Team revealed one by one (Second and Third Teams listed), then the National Player of the Year with extra suspense
+  - closes with the **Hall of Fame** class and a recap: every winner, your program's haul, and your Hall of Fame pace
+  - 1×, 2× and 4× speed, pause (Space), next (→) and skip (Esc). Your season-end press conference follows the show. Replay any show from Program History or the Hall of Fame.
+- **Hall of Fame** (Programs & Coaches → Hall of Fame):
+  - the first ceremony opens with a charter class of legends from the most storied programs
+  - after that, players get in once their careers are over, on their hardware (National POY, All-American teams, Final Four MOP, DPOY, a retired jersey)
+  - coaches get in a year after retiring, with a Legacy Score of 140 or 650 career wins
+  - up to three players and two coaches each year, shown on bronze plaques by class
+  - a tracker shows how close you are to your own plaque
 - **Rivalries 2.0** (sidebar → **Rivalries**):
   - every rivalry has **heat** (Lukewarm, Heated, Bitter, Blood Feud). Close games, upsets, ranked showdowns, conference tournament and NCAA meetings, and snapped streaks heat it up. When one side dominates or the teams stop meeting, it cools off.
   - about 100 historic rivalries never die; they cool back toward their traditional level
@@ -332,6 +345,7 @@ src/
     radio.ts       Full Court Fanatics: weekly fan radio episodes, locks, predictions, offseason specials
     pstats.ts      program and coach stats: per-season tracking, retired/fired coaches, head-to-head, summaries and scores
     rivalry.ts     Rivalries 2.0: heat, series, trophies, born/faded rivalries, rivalry week
+    awards.ts      season awards, Awards Night show data, Hall of Fame inductions
     events.ts / media.ts   story events, news & social
     staff.ts       coaching staff: market, effects, contracts, poaching, coaching tree
     scheduling.ts  Scheduling Office: Feast Week events, booking rules, guarantees, series, résumé meter

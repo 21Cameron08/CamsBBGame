@@ -9,6 +9,7 @@ import { inkOn } from '../color';
 import { loreOf, preDynastyTitles } from '../../engine/legacy';
 import { ProgramStory, RingOfHonor } from '../components/Legacy';
 import { rivalriesOf } from '../../engine/rivalry';
+import { replayAwardsNight } from '../shell/advance';
 
 const TROPHY_ICON: Record<Trophy['kind'], string> = { natl: '🏆', f4: '🥇', e8: '🎖️', s16: '🏅', conf: '🏟️', ctourn: '✂️', coy: '🧢' };
 
@@ -100,6 +101,7 @@ export function HistoryScreen() {
               <div className="row" style={{ marginTop: 10, gap: 8 }}>
                 <button className="btn sm" onClick={() => openRecords('program')}>📖 Program Record Book</button>
                 <button className="btn sm" onClick={() => open({ kind: 'program', id: team.id })}>📊 Program Stats</button>
+                {(g.awardsShows ?? []).length > 0 && <button className="btn sm" onClick={() => replayAwardsNight(g.awardsShows![g.awardsShows!.length - 1].season)}>🏆 Replay Awards Night</button>}
               </div>
             </div>
             <div className="spacer" />

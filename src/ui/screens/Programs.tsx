@@ -8,12 +8,15 @@ import type { GameState, Team } from '../../engine/types';
 import { programSummaries, coachSummaries, h2hTeam, h2hCoach, tierOf, seasonScore, type ProgramSummary, type CoachSummary } from '../../engine/pstats';
 import { seasonLabel } from '../../engine/calendar';
 import { allTitles } from '../components/Legacy';
+import { Plaque } from '../overlays/AwardsShow';
+import { HOF_COACH_SCORE, HOF_COACH_WINS, HOF_PLAYER_BAR } from '../../engine/awards';
+import { replayAwardsNight } from '../shell/advance';
 
 const pct = (w: number, l: number) => (w + l ? (w / (w + l)).toFixed(3).replace(/^0/, '') : '—');
 const wl = (w: number, l: number) => `${w}-${l}`;
 const f1 = (n: number) => n.toFixed(1);
 const tierCls = (label: string) => tierOf(TIER_MIN[label] ?? -1).cls;
-const TIER_MIN: Record<string, number> = { Legend: 300, 'Hall of Famer': 180, Elite: 100, Proven: 45, Rising: 15, Unproven: -1 };
+const TIER_MIN: Record<string, number> = { Legend: 260, 'Hall of Famer': 140, Elite: 100, Proven: 45, Rising: 15, Unproven: -1 };
 const POST_CLS = (p: string) => (p === 'Champion' ? 'pill gold' : p === 'Runner-up' || p === 'Final Four' ? 'pill accent' : p === 'Elite Eight' || p === 'Sweet 16' ? 'pill blue' : p ? 'pill good' : '');
 
 function useSummaries(g: GameState) {
@@ -25,7 +28,7 @@ function useSummaries(g: GameState) {
 export function ProgramsScreen() {
   const g = useGameState();
   const arg = useGame((s) => s.screenArg);
-  const [tab, setTab] = useState<'programs' | 'coaches'>(arg === 'coaches' ? 'coaches' : 'programs');
+  const [tab, setTab] = useState<'programs' | 'coaches' | 'hof'>(arg === 'coaches' ? 'coaches' : arg === 'hof' ? 'hof' : 'programs');
   const { programs, coaches } = useSummaries(g);
   const since = g.pstats?.since ?? g.season;
   return (
@@ -40,11 +43,11 @@ export function ProgramsScreen() {
               <div className="small" style={{ opacity: 0.85, maxWidth: 640 }}>Every program and every head coach, ranked by what they've done since your dynasty began. The season in progress counts toward records; postseason results count once they're in the books.</div>
             </div>
             <div className="spacer" />
-            <Tabs id="pc" value={tab} onChange={setTab} tabs={[{ id: 'programs', label: '🏛️ Programs' }, { id: 'coaches', label: '🧢 Coaches' }]} />
+            <Tabs id="pc" value={tab} onChange={setTab} tabs={[{ id: 'programs', label: '🏛️ Programs' }, { id: 'coaches', label: '🧢 Coaches' }, { id: 'hof', label: '🏅 Hall of Fame' }]} />
           </div>
         </div>
       </div>
-      {tab === 'programs' ? <ProgramBoard g={g} programs={programs} /> : <CoachBoard g={g} coaches={coaches} />}
+      {tab === 'programs' ? <ProgramBoard g={g} programs={programs} /> : tab === 'coaches' ? <CoachBoard g={g} coaches={coaches} /> : <HallOfFameBoard g={g} coaches={coaches} />}
     </div>
   );
 }
@@ -503,7 +506,7 @@ export function CoachDetail({ id }: { id: string }) {
                 <span style={{ flex: 1 }}>{label}</span><span className="num" style={{ color: v < 0 ? 'var(--bad)' : undefined }}>{v > 0 ? '+' : ''}{v}</span>
               </div>
             ))}
-            <div className="tiny muted" style={{ marginTop: 6 }}>Tiers: Unproven, Rising (15), Proven (45), Elite (100), Hall of Famer (180), Legend (300).</div>
+            <div className="tiny muted" style={{ marginTop: 6 }}>Tiers: Unproven, Rising (15), Proven (45), Elite (100), Hall of Famer (140), Legend (260).</div>
           </div>
           <div>
             <div className="eyebrow" style={{ marginBottom: 8 }}>Coaching Stops</div>
@@ -545,6 +548,75 @@ export function CoachDetail({ id }: { id: string }) {
             </table>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ======================= Hall of Fame =======================
+function HallOfFameBoard({ g, coaches }: { g: GameState; coaches: CoachSummary[] }) {
+  const inductees = g.hof?.inductees ?? [];
+  const classes = useMemo(() => {
+    const by = new Map<number, typeof inductees>();
+    for (const h of inductees) by.set(h.cls, [...(by.get(h.cls) ?? []), h]);
+    return [...by.entries()].sort((a, b) => b[0] - a[0]);
+  }, [inductees.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  const me = coaches.find((c) => c.isUser);
+  const pace = me ? Math.min(1, Math.max(me.score / HOF_COACH_SCORE, me.careerW / HOF_COACH_WINS)) : 0;
+  const shows = [...(g.awardsShows ?? [])].reverse();
+  const mine = inductees.filter((h) => h.teamId === g.user.teamId);
+  return (
+    <div className="grid g-main" style={{ alignItems: 'start' }}>
+      <div className="col" style={{ gap: 16 }}>
+        {classes.length === 0 ? (
+          <div className="card"><Empty>The Hall of Fame opens its doors at the first Awards Night, at the end of this season.</Empty></div>
+        ) : classes.map(([cls, list]) => (
+          <div key={cls} className="card">
+            <div className="card-head"><div className="h3">Class of {cls + 1}</div><span className="tiny muted">{list.length} inductee{list.length === 1 ? '' : 's'}{list.some((h) => h.id.startsWith('legend:')) ? ' · charter class' : ''}</span></div>
+            <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+              {list.map((h) => <Plaque key={h.kind + h.id} g={g} h={h} />)}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="col" style={{ gap: 16 }}>
+        <div className="card glow">
+          <div className="card-head"><div className="h3">Your Hall of Fame Pace</div></div>
+          {me && (
+            <>
+              <div className="row" style={{ gap: 12 }}>
+                <CoachFace c={{ id: me.id, age: me.age, face: me.coach?.face }} size={56} team={g.teams[g.user.teamId]} />
+                <div style={{ flex: 1 }}>
+                  <div className="small">Legacy score <b>{me.score}</b> / {HOF_COACH_SCORE}</div>
+                  <div className="small">Career wins <b>{me.careerW}</b> / {HOF_COACH_WINS}</div>
+                </div>
+                <div className="num" style={{ fontSize: 30 }}>{Math.round(pace * 100)}%</div>
+              </div>
+              <div className="heat-bar" style={{ width: '100%', height: 10, marginTop: 10 }}><i style={{ width: `${Math.max(3, pace * 100)}%`, background: 'linear-gradient(90deg,#8a6d3b,#f6c94c)' }} /></div>
+              <div className="tiny muted" style={{ marginTop: 8 }}>Coaches get in a year after they retire with a Legacy Score of {HOF_COACH_SCORE} (Hall of Famer tier) or {HOF_COACH_WINS} career wins. {pace >= 1 ? 'You’re a lock.' : 'Titles and Final Fours move the needle fastest.'}</div>
+            </>
+          )}
+        </div>
+        <div className="card">
+          <div className="card-head"><div className="h3">How Players Get In</div></div>
+          <div className="small muted" style={{ lineHeight: 1.5 }}>Once their college careers are over, players are judged on their hardware: National Player of the Year (40), First Team All-American (15 each), Final Four MOP (12), Defensive Player of the Year (8), plus a retired jersey (15). {HOF_PLAYER_BAR} gets you in. Up to three players and two coaches go in each year.</div>
+          {mine.length > 0 && <div className="small" style={{ marginTop: 10 }}>From {g.teams[g.user.teamId].school}: <b>{mine.map((h) => h.name).join(', ')}</b></div>}
+        </div>
+        <div className="card">
+          <div className="card-head"><div className="h3">Awards Night</div><span className="tiny muted">Replay any show</span></div>
+          {shows.length === 0 && <div className="small muted">The first Awards Night happens when the season ends.</div>}
+          {shows.map((s) => {
+            const poy = s.categories.find((c) => c.key === 'poy');
+            const w = poy?.nominees[poy.winner];
+            return (
+              <div key={s.season} className="row" style={{ padding: '7px 0', borderBottom: '1px solid var(--line)', gap: 10 }}>
+                <span className="b" style={{ width: 70 }}>{seasonLabel(s.season)}</span>
+                <span className="small muted ellipsis" style={{ flex: 1 }}>{w ? `POY: ${w.name}` : ''}</span>
+                <button className="btn sm" onClick={() => replayAwardsNight(s.season)}>▶ Replay</button>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

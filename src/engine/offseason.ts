@@ -22,55 +22,15 @@ import { recordSeasonEnd, trackProgram } from './records';
 import { seasonInstallReset, resetPlaybook } from './schemes';
 import { retireJerseys, jerseyNights } from './legacy';
 import { airEpisode, radioOffseason } from './radio';
+import { runAwards, stageAwardsNight } from './awards';
 import { finalizeProgramSeason, coachExit, recordClassRanks } from './pstats';
 import { rivalrySeasonEnd, rivalryCoachMove } from './rivalry';
 
 const NCAA_BONUS: Record<string, number> = { Champion: 30, 'Runner-up': 22, 'Final Four': 18, 'Elite Eight': 12, 'Sweet 16': 8, 'Round of 32': 4, 'Round of 64': 1, 'First Four': 0.5 };
 
-function playerScore(p: Player): number {
-  const g = Math.max(1, p.stats.gp);
-  const s = p.stats;
-  return (s.pts + (s.orb + s.drb) * 0.8 + s.ast * 1.1 + s.stl * 1.6 + s.blk * 1.4 - s.tov * 0.9 - (s.fga - s.fgm) * 0.45 - (s.fta - s.ftm) * 0.3) / g;
-}
-
+/** Season awards (see ./awards.ts); kept for callers that only want the list */
 export function computeAwards(state: GameState): Award[] {
-  const awards: Award[] = [];
-  const all = Object.values(state.players).filter((p) => p.teamId && p.stats.gp >= 15);
-  const teamBonus = (p: Player) => {
-    const t = state.teams[p.teamId!];
-    return t.rating * 0.12 + (t.apRank ? (26 - t.apRank) * 0.06 : 0);
-  };
-  const ranked = [...all].sort((a, b) => playerScore(b) + teamBonus(b) - (playerScore(a) + teamBonus(a)));
-  const add = (name: string, p: Player) => {
-    awards.push({ season: state.season, name, playerId: p.id, teamId: p.teamId!, who: `${p.first} ${p.last}` });
-    p.awards.push(`${name} (${seasonLabel(state.season)})`);
-  };
-  if (ranked[0]) add('National Player of the Year', ranked[0]);
-  ranked.slice(0, 5).forEach((p) => add('All-American First Team', p));
-  ranked.slice(5, 10).forEach((p) => add('All-American Second Team', p));
-  ranked.slice(10, 15).forEach((p) => add('All-American Third Team', p));
-  const fr = ranked.find((p) => p.cls === 'FR');
-  if (fr) add('Freshman of the Year', fr);
-  const dpoy = [...all].sort((a, b) => (b.stats.stl * 1.5 + b.stats.blk * 1.6 + b.ratings.perD * 0.15 + b.ratings.intD * 0.15) / 1 - (a.stats.stl * 1.5 + a.stats.blk * 1.6 + a.ratings.perD * 0.15 + a.ratings.intD * 0.15))[0];
-  if (dpoy) add('Defensive Player of the Year', dpoy);
-  // Coach of the year: biggest overachiever
-  const teams = Object.values(state.teams);
-  const coy = [...teams].sort((a, b) => (b.record.w - b.record.l) * 0.6 + (b.rating - (b.power - 65) * 1.15) - ((a.record.w - a.record.l) * 0.6 + (a.rating - (a.power - 65) * 1.15)))[0];
-  if (coy) {
-    const cc = state.coaches[coy.coachId];
-    awards.push({ season: state.season, name: 'Coach of the Year', coachId: coy.coachId, teamId: coy.id, who: cc ? `${cc.first} ${cc.last}` : undefined });
-  }
-  // Conference POY for each conference
-  for (const c of state.conferences) {
-    const best = ranked.find((p) => state.teams[p.teamId!].conf === c.id);
-    if (best) add(`${c.short} Player of the Year`, best);
-  }
-  // Most Outstanding Player of the Final Four (champion's best)
-  if (state.ncaa?.champion) {
-    const champs = teamPlayers(state, state.ncaa.champion).sort((a, b) => playerScore(b) - playerScore(a));
-    if (champs[0]) add('Final Four Most Outstanding Player', champs[0]);
-  }
-  return awards;
+  return runAwards(state).awards;
 }
 
 function finalPoll(state: GameState) {
@@ -92,7 +52,7 @@ export function beginSeasonEnd(state: GameState) {
   state.phase = 'seasonEnd';
   computeRatings(state);
   finalPoll(state);
-  const awards = computeAwards(state);
+  const { awards, show } = runAwards(state);
   state.awards.push(...awards);
   const user = state.teams[state.user.teamId];
   const coach = state.coaches[state.user.coachId];
@@ -177,8 +137,9 @@ export function beginSeasonEnd(state: GameState) {
     if (!who) continue;
     if (a.name === 'All-American First Team' && a.teamId !== user.id) continue;
     addNews(state, { kind: 'award', headline: `${who.first} ${who.last} (${t.school}) named ${a.name}`, body: `${who.first} ${who.last} of ${t.school} has been named ${a.name} for the ${seasonLabel(state.season)} season.`, teams: [t.id], important: a.teamId === user.id || a.name === 'National Player of the Year', personId: who.id, personKind: a.playerId ? 'player' : 'coach' });
-    if (a.teamId === user.id) state.user.moments.push({ kind: 'award', label: a.name, personId: who.id });
   }
+  // Awards Night (the show celebrates your winners; the season-end presser follows it)
+  stageAwardsNight(state, show);
   airEpisode(state, 'finale');
 }
 

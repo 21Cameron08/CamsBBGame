@@ -665,7 +665,8 @@ export type Moment =
   | { kind: 'award'; label: string; personId: string }
   | { kind: 'portalDay'; day: number; results: { playerId: string; teamId: string; won: boolean }[] }
   | { kind: 'selection'; season: number; press?: PressConference | null }
-  | { kind: 'rivalry'; key: string; teamId: string; oppId: string; label: string; sub: string; trophy?: string };
+  | { kind: 'rivalry'; key: string; teamId: string; oppId: string; label: string; sub: string; trophy?: string }
+  | { kind: 'awards'; season: number; press?: PressConference | null };
 
 export interface GameState {
   version: number;
@@ -706,6 +707,9 @@ export interface GameState {
   staff?: StaffState;
   /** jerseys retired during the dynasty (created on first use) */
   legacy?: { retired: Record<string, RetiredJersey[]> };
+  /** Awards Night shows (recent seasons) and the Hall of Fame (older saves start without them) */
+  awardsShows?: AwardsShowData[];
+  hof?: HallOfFame;
   /** Rivalries 2.0: heat, series, trophies, born and faded rivalries (older saves start without it) */
   rivals?: RivalryBook;
   /** program and coach stat tracking (older saves start without it) */
@@ -1042,3 +1046,50 @@ export interface Rivalry {
   big?: { m: number; w: string; s: number };
 }
 export interface RivalryBook { pairs: Record<string, Rivalry>; since: number; weekNews?: number }
+
+// ---------------- Awards Night & Hall of Fame ----------------
+/** A nominee, snapshotted so the show can be replayed after players leave */
+export interface AwardNominee {
+  kind: 'player' | 'coach' | 'game';
+  id: string;
+  name: string;
+  teamId: string;
+  /** opponent (games and performances) */
+  oppId?: string;
+  line: string;
+  sub?: string;
+  num?: number;
+  age?: number;
+}
+export interface AwardCategory {
+  key: string;
+  title: string;
+  blurb: string;
+  icon: string;
+  nominees: AwardNominee[];
+  /** index of the winner in nominees */
+  winner: number;
+  /** the big ones get extra suspense */
+  marquee?: boolean;
+}
+export interface HofInductee {
+  kind: 'player' | 'coach';
+  id: string;
+  name: string;
+  teamId: string;
+  /** induction class (season of the ceremony) */
+  cls: number;
+  line: string;
+  years?: string;
+  num?: number;
+  pos?: string;
+  age?: number;
+  score: number;
+}
+export interface HallOfFame { inductees: HofInductee[] }
+export interface AwardsShowData {
+  season: number;
+  categories: AwardCategory[];
+  allAmerica: { first: AwardNominee[]; second: AwardNominee[]; third: AwardNominee[] };
+  hof: HofInductee[];
+}
