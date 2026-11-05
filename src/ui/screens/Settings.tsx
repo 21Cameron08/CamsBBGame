@@ -9,6 +9,7 @@ import type { GameState, Team } from '../../engine/types';
 import { teamAccent } from '../color';
 import { REALIGN_INFO } from '../../engine/realignment';
 import { raceState } from '../../engine/facilities';
+import { CloudSaves } from '../components/CloudSaves';
 import type { RealignMode } from '../../engine/types';
 
 type Tab = 'saves' | 'prefs' | 'logos' | 'editor';
@@ -85,6 +86,9 @@ function Saves() {
             {s.id !== g.saveId && <button className="btn sm ghost" onClick={() => { if (confirm(`Delete "${s.name}"?`)) void deleteSave(s.id); }}>🗑</button>}
           </div>
         ))}
+      </Section>
+      <Section title="☁️ Cloud Saves" className="span-2">
+        <CloudSaves current={g} />
       </Section>
     </div>
   );

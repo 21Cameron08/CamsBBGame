@@ -590,3 +590,5 @@ input[type='range'] { accent-color: var(--accent); width: 100%; }
 .lk-check.on { background: var(--gold); border-color: var(--gold); }
 .lk-c { position: absolute; right: -4px; bottom: -2px; width: 24px; height: 24px; border-radius: 12px; background: var(--gold); color: #111; font-weight: 900; display: grid; place-items: center; font-size: 13px; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
 @media (max-width: 900px) { .lk-row { grid-template-columns: 42px minmax(0, 1fr) 120px; } .lk-row > :nth-child(3), .lk-row > :nth-child(4) { display: none; } }
+
+.span-2 { grid-column: 1 / -1; }

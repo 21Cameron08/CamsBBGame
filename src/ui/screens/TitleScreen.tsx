@@ -17,6 +17,7 @@ import { sfx } from '../sound';
 import type { GameState } from '../../engine/types';
 import { REALIGN_INFO } from '../../engine/realignment';
 import type { RealignMode } from '../../engine/types';
+import { CloudSaves } from '../components/CloudSaves';
 
 export function TitleScreen() {
   const [mode, setMode] = useState<'title' | 'new'>('title');
@@ -35,6 +36,7 @@ function Title({ onNew }: { onNew: () => void }) {
   const loadState = useGame((s) => s.loadState);
   const del = useGame((s) => s.deleteSave);
   const toast = useGame((s) => s.toast);
+  const [cloud, setCloud] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const showcase = useMemo(() => {
     const ids = ['duke', 'kentucky', 'kansas', 'north-carolina', 'uconn', 'ucla', 'gonzaga', 'houston', 'michigan-state', 'villanova', 'arizona', 'indiana', 'purdue', 'florida', 'auburn', 'baylor'];
@@ -58,6 +60,7 @@ function Title({ onNew }: { onNew: () => void }) {
           <button className="btn primary xl" style={{ '--accent': '#f07a24', '--accent-ink': '#fff' } as React.CSSProperties} onClick={() => { sfx.whoosh(); onNew(); }}>New Dynasty</button>
           {saves[0] && <button className="btn xl" onClick={() => void load(saves[0].id)}>Continue</button>}
           <button className="btn xl" onClick={() => fileRef.current?.click()}>Import Save</button>
+          <button className="btn xl" onClick={() => setCloud(!cloud)}>☁️ Cloud Saves</button>
           <input ref={fileRef} type="file" accept=".json,application/json" hidden onChange={async (e) => {
             const f = e.target.files?.[0];
             if (!f) return;
@@ -69,6 +72,12 @@ function Title({ onNew }: { onNew: () => void }) {
             e.target.value = '';
           }} />
         </motion.div>
+        {cloud && (
+          <motion.div className="card" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 24, padding: 18 }}>
+            <div className="h3" style={{ marginBottom: 10 }}>☁️ Cloud Saves</div>
+            <CloudSaves />
+          </motion.div>
+        )}
         {saves.length > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }}>
             <div className="eyebrow" style={{ marginBottom: 10, textAlign: 'center' }}>Your Dynasties</div>

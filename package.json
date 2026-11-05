@@ -13,6 +13,7 @@
     "season:test": "tsx scripts/seasonTest.ts"
   },
   "dependencies": {
+    "@vercel/blob": "^2.8.2",
     "framer-motion": "11.18.2",
     "idb-keyval": "6.2.1",
     "react": "18.3.1",
