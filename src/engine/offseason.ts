@@ -120,7 +120,14 @@ export function beginSeasonEnd(state: GameState) {
   const confSize = state.conferences.find((c) => c.id === user.conf) ? confStandings(state, user.conf).length : 10;
   const achieved = achievedLevel(state, user, uh.confFinish, confSize, uh.confChamp || uh.confTourneyChamp, uh.postseason);
   const diff = achieved - state.user.expectationLevel;
-  const secDelta = Math.round(diff * 9 + (user.record.w - user.record.l) * 0.3);
+  // losing seasons pile up: the AD's patience runs out even after expectations have fallen
+  let losingRun = 0;
+  for (let i = user.history.length - 1; i >= 0; i--) {
+    const h = user.history[i];
+    if (h.coachId !== coach.id || h.w >= h.l) break;
+    losingRun++;
+  }
+  const secDelta = Math.round(diff * 9 + (user.record.w - user.record.l) * 0.3) - (losingRun >= 2 ? Math.min(16, (losingRun - 1) * 4) : 0);
   coach.jobSecurity = clamp(coach.jobSecurity + secDelta, 0, 100);
   coach.reputation = clamp(coach.reputation + diff * 3 + (NCAA_BONUS[uh.postseason] ?? 0) * 0.25, 0, 100);
   coach.contractYears = Math.max(0, coach.contractYears - 1);
@@ -143,6 +150,13 @@ export function beginSeasonEnd(state: GameState) {
     coach.contractYears += 3;
     coach.salary = Math.round(coach.salary * 1.25 / 10000) * 10000;
   }
+  // an expiring deal: the AD renews it, or lets you go
+  let notRenewed = false;
+  if (!fired && coach.contractYears <= 0) {
+    if (coach.jobSecurity >= 50 && losingRun < 3) coach.contractYears = 2;
+    else if (state.settings.difficulty === 'rookie' && seasonsAtSchool < 3) coach.contractYears = 1;
+    else { fired = true; notRenewed = true; }
+  }
   const summary = `${user.school} finished ${user.record.w}-${user.record.l} (${user.record.cw}-${user.record.cl} conf, ${ordinal(uh.confFinish)} place)${uh.postseason ? ` — ${uh.postseason}` : ''}${uh.ncaaSeed ? ` as a No. ${uh.ncaaSeed} seed` : ''}. Goal: ${state.user.expectation}.`;
 
   // program stats for the season, before the carousel moves coaches around
@@ -157,7 +171,7 @@ export function beginSeasonEnd(state: GameState) {
   state.user.offers = jobOffers(state, fired);
   if (fired) {
     state.user.moments.push({ kind: 'fired' });
-    addNews(state, { kind: 'coach', headline: `${user.school} parts ways with ${coach.first} ${coach.last}`, body: `After ${seasonsAtSchool} season${seasonsAtSchool > 1 ? 's' : ''}, ${user.school} has fired head coach ${coach.first} ${coach.last}. The search begins immediately.`, teams: [user.id], important: true, personId: coach.id, personKind: 'coach' });
+    addNews(state, { kind: 'coach', headline: notRenewed ? `${user.school} won't renew ${coach.first} ${coach.last}'s contract` : `${user.school} parts ways with ${coach.first} ${coach.last}`, body: notRenewed ? `${coach.first} ${coach.last}'s contract is up after ${seasonsAtSchool} season${seasonsAtSchool > 1 ? 's' : ''}, and ${user.school} has decided to go in a different direction.` : `After ${seasonsAtSchool} season${seasonsAtSchool > 1 ? 's' : ''}, ${user.school} has fired head coach ${coach.first} ${coach.last}. The search begins immediately.`, teams: [user.id], important: true, personId: coach.id, personKind: 'coach' });
   }
   state.offseason = { graduating: [], declared: [], progression: {}, signed: [], carousel, summary, achieved, securityDelta: secDelta };
   staffSeasonEnd(state);
